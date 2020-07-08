@@ -33,6 +33,16 @@ DRESULT disk_write (BYTE pdrv, const BYTE* buff, LBA_t sector, UINT count);
 DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void* buff);
 
 
+struct DIO {
+	void* ctx;
+	DSTATUS (*disk_initialize) (void* ctx, BYTE pdrv);
+	DSTATUS (*disk_status) (void* ctx, BYTE pdrv);
+	DRESULT (*disk_read) (void* ctx, BYTE pdrv, BYTE* buff, LBA_t sector, UINT count);
+	DRESULT (*disk_write) (void* ctx, BYTE pdrv, const BYTE* buff, LBA_t sector, UINT count);
+	DRESULT (*disk_ioctl) (void* ctx, BYTE pdrv, BYTE cmd, void* buff);
+};
+
+
 /* Disk Status Bits (DSTATUS) */
 
 #define STA_NOINIT		0x01	/* Drive not initialized */
