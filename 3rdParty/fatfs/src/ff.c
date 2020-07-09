@@ -454,19 +454,6 @@ typedef struct {
 /* File/Volume controls           */
 /*--------------------------------*/
 
-#if FF_VOLUMES < 1 || FF_VOLUMES > 10
-#error Wrong FF_VOLUMES setting
-#endif
-static FATFS* FatFs[FF_VOLUMES];	/* Pointer to the filesystem objects (logical drives) */
-static WORD Fsid;					/* Filesystem mount ID */
-
-#if FF_FS_RPATH != 0
-static BYTE CurrVol;				/* Current drive */
-#endif
-
-#if FF_FS_LOCK != 0
-static FILESEM Files[FF_FS_LOCK];	/* Open object lock semaphores */
-#endif
 
 #if FF_STR_VOLUME_ID
 #ifdef FF_VOLUME_STRS
@@ -962,6 +949,7 @@ static void unlock_fs (
 /*-----------------------------------------------------------------------*/
 
 static FRESULT chk_lock (	/* Check if the file can be accessed */
+	FCTX* fctx,
 	DIR* dp,		/* Directory object pointing the file to be checked */
 	int acc			/* Desired access type (0:Read mode open, 1:Write mode open, 2:Delete or rename) */
 )
@@ -971,10 +959,10 @@ static FRESULT chk_lock (	/* Check if the file can be accessed */
 	/* Search open object table for the object */
 	be = 0;
 	for (i = 0; i < FF_FS_LOCK; i++) {
-		if (Files[i].fs) {	/* Existing entry */
-			if (Files[i].fs == dp->obj.fs &&	 	/* Check if the object matches with an open object */
-				Files[i].clu == dp->obj.sclust &&
-				Files[i].ofs == dp->dptr) break;
+		if (fctx->Files[i].fs) {	/* Existing entry */
+			if (fctx->Files[i].fs == dp->obj.fs &&	 	/* Check if the object matches with an open object */
+				fctx->Files[i].clu == dp->obj.sclust &&
+				fctx->Files[i].ofs == dp->dptr) break;
 		} else {			/* Blank entry */
 			be = 1;
 		}
@@ -984,7 +972,7 @@ static FRESULT chk_lock (	/* Check if the file can be accessed */
 	}
 
 	/* The object was opened. Reject any open against writing file and all write mode open */
-	return (acc != 0 || Files[i].ctr == 0x100) ? FR_LOCKED : FR_OK;
+	return (acc != 0 || fctx->Files[i].ctr == 0x100) ? FR_LOCKED : FR_OK;
 }
 
 
@@ -992,12 +980,13 @@ static int enq_lock (void)	/* Check if an entry is available for a new object */
 {
 	UINT i;
 
-	for (i = 0; i < FF_FS_LOCK && Files[i].fs; i++) ;
+	for (i = 0; i < FF_FS_LOCK && fctx->Files[i].fs; i++) ;
 	return (i == FF_FS_LOCK) ? 0 : 1;
 }
 
 
 static UINT inc_lock (	/* Increment object open counter and returns its index (0:Internal error) */
+	FCTX* fctx,
 	DIR* dp,	/* Directory object pointing the file to register or increment */
 	int acc		/* Desired access (0:Read, 1:Write, 2:Delete/Rename) */
 )
@@ -1006,29 +995,30 @@ static UINT inc_lock (	/* Increment object open counter and returns its index (0
 
 
 	for (i = 0; i < FF_FS_LOCK; i++) {	/* Find the object */
-		if (Files[i].fs == dp->obj.fs
-		 && Files[i].clu == dp->obj.sclust
-		 && Files[i].ofs == dp->dptr) break;
+		if (fctx->Files[i].fs == dp->obj.fs
+		 && fctx->Files[i].clu == dp->obj.sclust
+		 && fctx->Files[i].ofs == dp->dptr) break;
 	}
 
 	if (i == FF_FS_LOCK) {				/* Not opened. Register it as new. */
-		for (i = 0; i < FF_FS_LOCK && Files[i].fs; i++) ;
+		for (i = 0; i < FF_FS_LOCK && fctx->Files[i].fs; i++) ;
 		if (i == FF_FS_LOCK) return 0;	/* No free entry to register (int err) */
-		Files[i].fs = dp->obj.fs;
-		Files[i].clu = dp->obj.sclust;
-		Files[i].ofs = dp->dptr;
-		Files[i].ctr = 0;
+		fctx->Files[i].fs = dp->obj.fs;
+		fctx->Files[i].clu = dp->obj.sclust;
+		fctx->Files[i].ofs = dp->dptr;
+		fctx->Files[i].ctr = 0;
 	}
 
-	if (acc >= 1 && Files[i].ctr) return 0;	/* Access violation (int err) */
+	if (acc >= 1 && fctx->Files[i].ctr) return 0;	/* Access violation (int err) */
 
-	Files[i].ctr = acc ? 0x100 : Files[i].ctr + 1;	/* Set semaphore value */
+	fctx->Files[i].ctr = acc ? 0x100 : fctx->Files[i].ctr + 1;	/* Set semaphore value */
 
 	return i + 1;	/* Index number origin from 1 */
 }
 
 
 static FRESULT dec_lock (	/* Decrement object open counter */
+	FCTX* fctx,
 	UINT i			/* Semaphore index (1..) */
 )
 {
@@ -1037,11 +1027,11 @@ static FRESULT dec_lock (	/* Decrement object open counter */
 
 
 	if (--i < FF_FS_LOCK) {	/* Index number origin from 0 */
-		n = Files[i].ctr;
+		n = fctx->Files[i].ctr;
 		if (n == 0x100) n = 0;		/* If write mode open, delete the entry */
 		if (n > 0) n--;				/* Decrement read mode open count */
-		Files[i].ctr = n;
-		if (n == 0) Files[i].fs = 0;	/* Delete the entry if open count gets zero */
+		fctx->Files[i].ctr = n;
+		if (n == 0) fctx->Files[i].fs = 0;	/* Delete the entry if open count gets zero */
 		res = FR_OK;
 	} else {
 		res = FR_INT_ERR;			/* Invalid index nunber */
@@ -1051,13 +1041,14 @@ static FRESULT dec_lock (	/* Decrement object open counter */
 
 
 static void clear_lock (	/* Clear lock entries of the volume */
+	FCTX* fctx,
 	FATFS *fs
 )
 {
 	UINT i;
 
 	for (i = 0; i < FF_FS_LOCK; i++) {
-		if (Files[i].fs == fs) Files[i].fs = 0;
+		if (fctx->Files[i].fs == fs) fctx->Files[i].fs = 0;
 	}
 }
 
@@ -3204,7 +3195,7 @@ static int get_ldnumber (	/* Returns logical drive number (-1:invalid drive numb
 #endif
 	/* No drive prefix is found */
 #if FF_FS_RPATH != 0
-	vol = CurrVol;	/* Default drive is current drive */
+	vol = fctx->CurrVol;	/* Default drive is current drive */
 #else
 	vol = 0;		/* Default drive is 0 */
 #endif
@@ -3368,7 +3359,7 @@ static UINT find_volume (	/* Returns BS status found in the hosting drive */
 /*-----------------------------------------------------------------------*/
 
 static FRESULT mount_volume (	/* FR_OK(0): successful, !=0: an error occurred */
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR** path,			/* Pointer to pointer to the path name (drive number) */
 	FATFS** rfs,				/* Pointer to pointer to the found filesystem object */
 	BYTE mode					/* !=0: Check write protection for write access */
@@ -3389,7 +3380,7 @@ static FRESULT mount_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 	if (vol < 0) return FR_INVALID_DRIVE;
 
 	/* Check if the filesystem object is valid or not */
-	fs = FatFs[vol];					/* Get pointer to the filesystem object */
+	fs = fctx->FatFs[vol];					/* Get pointer to the filesystem object */
 	if (!fs) return FR_NOT_ENABLED;		/* Is the filesystem object available? */
 #if FF_FS_REENTRANT
 	if (!lock_fs(fs)) return FR_TIMEOUT;	/* Lock the volume */
@@ -3412,8 +3403,8 @@ static FRESULT mount_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 
 	fs->fs_type = 0;					/* Clear the filesystem object */
 	fs->pdrv = LD2PD(vol);				/* Volume hosting physical drive */
-	fs->dio = dio;
-	stat = fs->dio->disk_initialize(fs->dio->ctx, fs->pdrv);	/* Initialize the physical drive */
+	fs->dio = fctx->dio;
+	stat = fctx->dio->disk_initialize(fctx->dio->ctx, fs->pdrv);	/* Initialize the physical drive */
 	if (stat & STA_NOINIT) { 			/* Check if the initialization succeeded */
 		return FR_NOT_READY;			/* Failed to initialize due to no medium or hard error */
 	}
@@ -3421,7 +3412,7 @@ static FRESULT mount_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 		return FR_WRITE_PROTECTED;
 	}
 #if FF_MAX_SS != FF_MIN_SS				/* Get sector size (multiple sector size cfg only) */
-	if (fs->dio->disk_ioctl(fs->dio->ctx, fs->pdrv, GET_SECTOR_SIZE, &SS(fs)) != RES_OK) return FR_DISK_ERR;
+	if (fctx->dio->disk_ioctl(fctx->dio->ctx, fs->pdrv, GET_SECTOR_SIZE, &SS(fs)) != RES_OK) return FR_DISK_ERR;
 	if (SS(fs) > FF_MAX_SS || SS(fs) < FF_MIN_SS || (SS(fs) & (SS(fs) - 1))) return FR_DISK_ERR;
 #endif
 
@@ -3575,7 +3566,7 @@ static FRESULT mount_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 	}
 
 	fs->fs_type = (BYTE)fmt;/* FAT sub-type */
-	fs->id = ++Fsid;		/* Volume mount ID */
+	fs->id = ++fctx->Fsid;		/* Volume mount ID */
 #if FF_USE_LFN == 1
 	fs->lfnbuf = LfnBuf;	/* Static LFN working buffer */
 #if FF_FS_EXFAT
@@ -3643,7 +3634,7 @@ static FRESULT validate (	/* Returns FR_OK or FR_INVALID_OBJECT */
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_mount (
-	DIO* dio,
+	FCTX* fctx,
 	FATFS* fs,			/* Pointer to the filesystem object (NULL:unmount)*/
 	const TCHAR* path,	/* Logical drive number to be mounted/unmounted */
 	BYTE opt			/* Mode option 0:Do not mount (delayed mount), 1:Mount immediately */
@@ -3658,11 +3649,11 @@ FRESULT f_mount (
 	/* Get logical drive number */
 	vol = get_ldnumber(&rp);
 	if (vol < 0) return FR_INVALID_DRIVE;
-	cfs = FatFs[vol];					/* Pointer to fs object */
+	cfs = fctx->FatFs[vol];					/* Pointer to fs object */
 
 	if (cfs) {
 #if FF_FS_LOCK != 0
-		clear_lock(cfs);
+		clear_lock(fctx, cfs);
 #endif
 #if FF_FS_REENTRANT						/* Discard sync object of the current volume */
 		if (!ff_del_syncobj(cfs->sobj)) return FR_INT_ERR;
@@ -3676,11 +3667,11 @@ FRESULT f_mount (
 		if (!ff_cre_syncobj((BYTE)vol, &fs->sobj)) return FR_INT_ERR;
 #endif
 	}
-	FatFs[vol] = fs;					/* Register new fs object */
+	fctx->FatFs[vol] = fs;					/* Register new fs object */
 
 	if (opt == 0) return FR_OK;			/* Do not mount now, it will be mounted later */
 
-	res = mount_volume(dio, &path, &fs, 0);	/* Force mounted the volume */
+	res = mount_volume(fctx, &path, &fs, 0);	/* Force mounted the volume */
 	LEAVE_FF(fs, res);
 }
 
@@ -3692,7 +3683,7 @@ FRESULT f_mount (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_open (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp,			/* Pointer to the blank file object */
 	const TCHAR* path,	/* Pointer to the file name */
 	BYTE mode			/* Access mode and file open mode flags */
@@ -3713,7 +3704,7 @@ FRESULT f_open (
 
 	/* Get logical drive number */
 	mode &= FF_FS_READONLY ? FA_READ : FA_READ | FA_WRITE | FA_CREATE_ALWAYS | FA_CREATE_NEW | FA_OPEN_ALWAYS | FA_OPEN_APPEND;
-	res = mount_volume(dio, &path, &fs, mode);
+	res = mount_volume(fctx, &path, &fs, mode);
 	if (res == FR_OK) {
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -3725,7 +3716,7 @@ FRESULT f_open (
 			}
 #if FF_FS_LOCK != 0
 			else {
-				res = chk_lock(&dj, (mode & ~FA_READ) ? 1 : 0);		/* Check if the file can be used */
+				res = chk_lock(fctx, &dj, (mode & ~FA_READ) ? 1 : 0);		/* Check if the file can be used */
 			}
 #endif
 		}
@@ -3734,7 +3725,7 @@ FRESULT f_open (
 			if (res != FR_OK) {					/* No file, create new */
 				if (res == FR_NO_FILE) {		/* There is no file to open, create a new entry */
 #if FF_FS_LOCK != 0
-					res = enq_lock() ? dir_register(&dj) : FR_TOO_MANY_OPEN_FILES;
+					res = enq_lock(fctx) ? dir_register(&dj) : FR_TOO_MANY_OPEN_FILES;
 #else
 					res = dir_register(&dj);
 #endif
@@ -3802,7 +3793,7 @@ FRESULT f_open (
 			fp->dir_sect = fs->winsect;			/* Pointer to the directory entry */
 			fp->dir_ptr = dj.dir;
 #if FF_FS_LOCK != 0
-			fp->obj.lockid = inc_lock(&dj, (mode & ~FA_READ) ? 1 : 0);	/* Lock the file for this session */
+			fp->obj.lockid = inc_lock(fctx, &dj, (mode & ~FA_READ) ? 1 : 0);	/* Lock the file for this session */
 			if (fp->obj.lockid == 0) res = FR_INT_ERR;
 #endif
 		}
@@ -3885,7 +3876,7 @@ FRESULT f_open (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_read (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp, 	/* Pointer to the file object */
 	void* buff,	/* Pointer to data buffer */
 	UINT btr,	/* Number of bytes to read */
@@ -3987,7 +3978,7 @@ FRESULT f_read (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_write (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp,			/* Pointer to the file object */
 	const void* buff,	/* Pointer to the data to be written */
 	UINT btw,			/* Number of bytes to write */
@@ -4110,7 +4101,7 @@ FRESULT f_write (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_sync (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp		/* Pointer to the file object */
 )
 {
@@ -4125,7 +4116,7 @@ FRESULT f_sync (
 		if (fp->flag & FA_MODIFIED) {	/* Is there any change to the file? */
 #if !FF_FS_TINY
 			if (fp->flag & FA_DIRTY) {	/* Write-back cached data if needed */
-				if (fs->dio->disk_write(fs->dio->ctx, fs->pdrv, fp->buf, fp->sect, 1) != RES_OK) LEAVE_FF(fs, FR_DISK_ERR);
+				if (fctx->dio->disk_write(fctx->dio->ctx, fs->pdrv, fp->buf, fp->sect, 1) != RES_OK) LEAVE_FF(fs, FR_DISK_ERR);
 				fp->flag &= (BYTE)~FA_DIRTY;
 			}
 #endif
@@ -4192,7 +4183,7 @@ FRESULT f_sync (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_close (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp		/* Pointer to the file object to be closed */
 )
 {
@@ -4200,14 +4191,14 @@ FRESULT f_close (
 	FATFS *fs;
 
 #if !FF_FS_READONLY
-	res = f_sync(dio, fp);					/* Flush cached data */
+	res = f_sync(fctx, fp);					/* Flush cached data */
 	if (res == FR_OK)
 #endif
 	{
 		res = validate(&fp->obj, &fs);	/* Lock volume */
 		if (res == FR_OK) {
 #if FF_FS_LOCK != 0
-			res = dec_lock(fp->obj.lockid);		/* Decrement file open counter */
+			res = dec_lock(fctx, fp->obj.lockid);		/* Decrement file open counter */
 			if (res == FR_OK) fp->obj.fs = 0;	/* Invalidate file object */
 #else
 			fp->obj.fs = 0;	/* Invalidate file object */
@@ -4229,7 +4220,7 @@ FRESULT f_close (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_chdrive (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path		/* Drive number to set */
 )
 {
@@ -4239,7 +4230,7 @@ FRESULT f_chdrive (
 	/* Get logical drive number */
 	vol = get_ldnumber(&path);
 	if (vol < 0) return FR_INVALID_DRIVE;
-	CurrVol = (BYTE)vol;	/* Set it as current volume */
+	fctx->CurrVol = (BYTE)vol;	/* Set it as current volume */
 
 	return FR_OK;
 }
@@ -4247,7 +4238,7 @@ FRESULT f_chdrive (
 
 
 FRESULT f_chdir (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path	/* Pointer to the directory path */
 )
 {
@@ -4261,7 +4252,7 @@ FRESULT f_chdir (
 
 
 	/* Get logical drive */
-	res = mount_volume(dio, &path, &fs, 0);
+	res = mount_volume(fctx, &path, &fs, 0);
 	if (res == FR_OK) {
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -4298,8 +4289,8 @@ FRESULT f_chdir (
 		if (res == FR_NO_FILE) res = FR_NO_PATH;
 #if FF_STR_VOLUME_ID == 2	/* Also current drive is changed at Unix style volume ID */
 		if (res == FR_OK) {
-			for (i = FF_VOLUMES - 1; i && fs != FatFs[i]; i--) ;	/* Set current drive */
-			CurrVol = (BYTE)i;
+			for (i = FF_VOLUMES - 1; i && fs != fctx->FatFs[i]; i--) ;	/* Set current drive */
+			fctx->CurrVol = (BYTE)i;
 		}
 #endif
 	}
@@ -4310,7 +4301,7 @@ FRESULT f_chdir (
 
 #if FF_FS_RPATH >= 2
 FRESULT f_getcwd (
-	DIO* dio,
+	FCTX* fctx,
 	TCHAR* buff,	/* Pointer to the directory path */
 	UINT len		/* Size of buff in unit of TCHAR */
 )
@@ -4333,7 +4324,7 @@ FRESULT f_getcwd (
 
 	/* Get logical drive */
 	buff[0] = 0;	/* Set null string to get current volume */
-	res = mount_volume(dio, (const TCHAR**)&buff, &fs, 0);	/* Get current volume */
+	res = mount_volume(fctx, (const TCHAR**)&buff, &fs, 0);	/* Get current volume */
 	if (res == FR_OK) {
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -4372,7 +4363,7 @@ FRESULT f_getcwd (
 #if FF_VOLUMES >= 2			/* Put drive prefix */
 			vl = 0;
 #if FF_STR_VOLUME_ID >= 1	/* String volume ID */
-			for (n = 0, vp = (const char*)VolumeStr[CurrVol]; vp[n]; n++) ;
+			for (n = 0, vp = (const char*)VolumeStr[fctx->CurrVol]; vp[n]; n++) ;
 			if (i >= n + 2) {
 				if (FF_STR_VOLUME_ID == 2) *tp++ = (TCHAR)'/';
 				for (vl = 0; vl < n; *tp++ = (TCHAR)vp[vl], vl++) ;
@@ -4381,7 +4372,7 @@ FRESULT f_getcwd (
 			}
 #else						/* Numeric volume ID */
 			if (i >= 3) {
-				*tp++ = (TCHAR)'0' + CurrVol;
+				*tp++ = (TCHAR)'0' + fctx->CurrVol;
 				*tp++ = (TCHAR)':';
 				vl = 2;
 			}
@@ -4411,7 +4402,7 @@ FRESULT f_getcwd (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_lseek (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp,		/* Pointer to the file object */
 	FSIZE_t ofs		/* File pointer from top of file */
 )
@@ -4474,11 +4465,11 @@ FRESULT f_lseek (
 #if !FF_FS_TINY
 #if !FF_FS_READONLY
 					if (fp->flag & FA_DIRTY) {		/* Write-back dirty sector cache */
-						if (fs->dio->disk_write(fs->dio->ctx, fs->pdrv, fp->buf, fp->sect, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);
+						if (fctx->dio->disk_write(fctx->dio->ctx, fs->pdrv, fp->buf, fp->sect, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);
 						fp->flag &= (BYTE)~FA_DIRTY;
 					}
 #endif
-					if (fs->dio->disk_read(fs->dio->ctx, fs->pdrv, fp->buf, dsc, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);	/* Load current sector */
+					if (fctx->dio->disk_read(fctx->dio->ctx, fs->pdrv, fp->buf, dsc, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);	/* Load current sector */
 #endif
 					fp->sect = dsc;
 				}
@@ -4554,11 +4545,11 @@ FRESULT f_lseek (
 #if !FF_FS_TINY
 #if !FF_FS_READONLY
 			if (fp->flag & FA_DIRTY) {			/* Write-back dirty sector cache */
-				if (fs->dio->disk_write(fs->dio->ctx, fs->pdrv, fp->buf, fp->sect, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);
+				if (fctx->dio->disk_write(fctx->dio->ctx, fs->pdrv, fp->buf, fp->sect, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);
 				fp->flag &= (BYTE)~FA_DIRTY;
 			}
 #endif
-			if (fs->dio->disk_read(fs->dio->ctx, fs->pdrv, fp->buf, nsect, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);	/* Fill sector cache */
+			if (fctx->dio->disk_read(fctx->dio->ctx, fs->pdrv, fp->buf, nsect, 1) != RES_OK) ABORT(fs, FR_DISK_ERR);	/* Fill sector cache */
 #endif
 			fp->sect = nsect;
 		}
@@ -4575,7 +4566,7 @@ FRESULT f_lseek (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_opendir (
-	DIO* dio,
+	FCTX* fctx,
 	DIR* dp,			/* Pointer to directory object to create */
 	const TCHAR* path	/* Pointer to the directory path */
 )
@@ -4588,7 +4579,7 @@ FRESULT f_opendir (
 	if (!dp) return FR_INVALID_OBJECT;
 
 	/* Get logical drive */
-	res = mount_volume(dio, &path, &fs, 0);
+	res = mount_volume(fctx, &path, &fs, 0);
 	if (res == FR_OK) {
 		dp->obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -4617,7 +4608,7 @@ FRESULT f_opendir (
 #if FF_FS_LOCK != 0
 				if (res == FR_OK) {
 					if (dp->obj.sclust != 0) {
-						dp->obj.lockid = inc_lock(dp, 0);	/* Lock the sub directory */
+						dp->obj.lockid = inc_lock(fctx, dp, 0);	/* Lock the sub directory */
 						if (!dp->obj.lockid) res = FR_TOO_MANY_OPEN_FILES;
 					} else {
 						dp->obj.lockid = 0;	/* Root directory need not to be locked */
@@ -4642,7 +4633,7 @@ FRESULT f_opendir (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_closedir (
-	DIO* dio,
+	FCTX* fctx,
 	DIR *dp		/* Pointer to the directory object to be closed */
 )
 {
@@ -4653,7 +4644,7 @@ FRESULT f_closedir (
 	res = validate(&dp->obj, &fs);	/* Check validity of the file object */
 	if (res == FR_OK) {
 #if FF_FS_LOCK != 0
-		if (dp->obj.lockid) res = dec_lock(dp->obj.lockid);	/* Decrement sub-directory open counter */
+		if (dp->obj.lockid) res = dec_lock(fctx, dp->obj.lockid);	/* Decrement sub-directory open counter */
 		if (res == FR_OK) dp->obj.fs = 0;	/* Invalidate directory object */
 #else
 		dp->obj.fs = 0;	/* Invalidate directory object */
@@ -4673,7 +4664,7 @@ FRESULT f_closedir (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_readdir (
-	DIO* dio,
+	FCTX* fctx,
 	DIR* dp,			/* Pointer to the open directory object */
 	FILINFO* fno		/* Pointer to file information to return */
 )
@@ -4710,7 +4701,7 @@ FRESULT f_readdir (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_findnext (
-	DIO* dio,
+	FCTX* fctx,
 	DIR* dp,		/* Pointer to the open directory object */
 	FILINFO* fno	/* Pointer to the file information structure */
 )
@@ -4736,7 +4727,7 @@ FRESULT f_findnext (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_findfirst (
-	DIO* dio,
+	FCTX* fctx,
 	DIR* dp,				/* Pointer to the blank directory object */
 	FILINFO* fno,			/* Pointer to the file information structure */
 	const TCHAR* path,		/* Pointer to the directory to open */
@@ -4764,7 +4755,7 @@ FRESULT f_findfirst (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_stat (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path,	/* Pointer to the file path */
 	FILINFO* fno		/* Pointer to file information to return */
 )
@@ -4775,7 +4766,7 @@ FRESULT f_stat (
 
 
 	/* Get logical drive */
-	res = mount_volume(dio, &path, &dj.obj.fs, 0);
+	res = mount_volume(fctx, &path, &dj.obj.fs, 0);
 	if (res == FR_OK) {
 		INIT_NAMBUF(dj.obj.fs);
 		res = follow_path(&dj, path);	/* Follow the file path */
@@ -4800,7 +4791,7 @@ FRESULT f_stat (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_getfree (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path,	/* Logical drive number */
 	DWORD* nclst,		/* Pointer to a variable to return number of free clusters */
 	FATFS** fatfs		/* Pointer to return pointer to corresponding filesystem object */
@@ -4815,7 +4806,7 @@ FRESULT f_getfree (
 
 
 	/* Get logical drive */
-	res = mount_volume(dio, &path, &fs, 0);
+	res = mount_volume(fctx, &path, &fs, 0);
 	if (res == FR_OK) {
 		*fatfs = fs;				/* Return ptr to the fs object */
 		/* If free_clst is valid, return it without full FAT scan */
@@ -4891,7 +4882,7 @@ FRESULT f_getfree (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_truncate (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp		/* Pointer to the file object */
 )
 {
@@ -4921,7 +4912,7 @@ FRESULT f_truncate (
 		fp->flag |= FA_MODIFIED;
 #if !FF_FS_TINY
 		if (res == FR_OK && (fp->flag & FA_DIRTY)) {
-			if (fs->dio->disk_write(fs->dio->ctx, fs->pdrv, fp->buf, fp->sect, 1) != RES_OK) {
+			if (fctx->dio->disk_write(fctx->dio->ctx, fs->pdrv, fp->buf, fp->sect, 1) != RES_OK) {
 				res = FR_DISK_ERR;
 			} else {
 				fp->flag &= (BYTE)~FA_DIRTY;
@@ -4942,7 +4933,7 @@ FRESULT f_truncate (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_unlink (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path		/* Pointer to the file or directory path */
 )
 {
@@ -4957,7 +4948,7 @@ FRESULT f_unlink (
 
 
 	/* Get logical drive */
-	res = mount_volume(dio, &path, &fs, FA_WRITE);
+	res = mount_volume(fctx, &path, &fs, FA_WRITE);
 	if (res == FR_OK) {
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -4966,7 +4957,7 @@ FRESULT f_unlink (
 			res = FR_INVALID_NAME;			/* Cannot remove dot entry */
 		}
 #if FF_FS_LOCK != 0
-		if (res == FR_OK) res = chk_lock(&dj, 2);	/* Check if it is an open object */
+		if (res == FR_OK) res = chk_lock(fctx, &dj, 2);	/* Check if it is an open object */
 #endif
 		if (res == FR_OK) {					/* The object is accessible */
 			if (dj.fn[NSFLAG] & NS_NONAME) {
@@ -5037,7 +5028,7 @@ FRESULT f_unlink (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_mkdir (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path		/* Pointer to the directory path */
 )
 {
@@ -5049,7 +5040,7 @@ FRESULT f_mkdir (
 	DEF_NAMBUF
 
 
-	res = mount_volume(dio, &path, &fs, FA_WRITE);	/* Get logical drive */
+	res = mount_volume(fctx, &path, &fs, FA_WRITE);	/* Get logical drive */
 	if (res == FR_OK) {
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -5122,7 +5113,7 @@ FRESULT f_mkdir (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_rename (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path_old,	/* Pointer to the object name to be renamed */
 	const TCHAR* path_new	/* Pointer to the new name */
 )
@@ -5136,7 +5127,7 @@ FRESULT f_rename (
 
 
 	get_ldnumber(&path_new);						/* Snip the drive number of new name off */
-	res = mount_volume(dio, &path_old, &fs, FA_WRITE);	/* Get logical drive of the old object */
+	res = mount_volume(fctx, &path_old, &fs, FA_WRITE);	/* Get logical drive of the old object */
 	if (res == FR_OK) {
 		djo.obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -5144,7 +5135,7 @@ FRESULT f_rename (
 		if (res == FR_OK && (djo.fn[NSFLAG] & (NS_DOT | NS_NONAME))) res = FR_INVALID_NAME;	/* Check validity of name */
 #if FF_FS_LOCK != 0
 		if (res == FR_OK) {
-			res = chk_lock(&djo, 2);
+			res = chk_lock(fctx, &djo, 2);
 		}
 #endif
 		if (res == FR_OK) {						/* Object to be renamed is found */
@@ -5233,7 +5224,7 @@ FRESULT f_rename (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_chmod (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path,	/* Pointer to the file path */
 	BYTE attr,			/* Attribute bits */
 	BYTE mask			/* Attribute mask to change */
@@ -5245,7 +5236,7 @@ FRESULT f_chmod (
 	DEF_NAMBUF
 
 
-	res = mount_volume(dio, &path, &fs, FA_WRITE);	/* Get logical drive */
+	res = mount_volume(fctx, &path, &fs, FA_WRITE);	/* Get logical drive */
 	if (res == FR_OK) {
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -5281,7 +5272,7 @@ FRESULT f_chmod (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_utime (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path,	/* Pointer to the file/directory name */
 	const FILINFO* fno	/* Pointer to the timestamp to be set */
 )
@@ -5292,7 +5283,7 @@ FRESULT f_utime (
 	DEF_NAMBUF
 
 
-	res = mount_volume(dio, &path, &fs, FA_WRITE);	/* Get logical drive */
+	res = mount_volume(fctx, &path, &fs, FA_WRITE);	/* Get logical drive */
 	if (res == FR_OK) {
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);
@@ -5329,7 +5320,7 @@ FRESULT f_utime (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_getlabel (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path,	/* Logical drive number */
 	TCHAR* label,		/* Buffer to store the volume label */
 	DWORD* vsn			/* Variable to store the volume serial number */
@@ -5342,7 +5333,7 @@ FRESULT f_getlabel (
 	WCHAR wc;
 
 	/* Get logical drive */
-	res = mount_volume(dio, &path, &fs, 0);
+	res = mount_volume(fctx, &path, &fs, 0);
 
 	/* Get volume label */
 	if (res == FR_OK && label) {
@@ -5425,7 +5416,7 @@ FRESULT f_getlabel (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_setlabel (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* label	/* Volume label to set with heading logical drive number */
 )
 {
@@ -5441,7 +5432,7 @@ FRESULT f_setlabel (
 #endif
 
 	/* Get logical drive */
-	res = mount_volume(dio, &label, &fs, FA_WRITE);
+	res = mount_volume(fctx, &label, &fs, FA_WRITE);
 	if (res != FR_OK) LEAVE_FF(fs, res);
 
 #if FF_FS_EXFAT
@@ -5546,7 +5537,7 @@ FRESULT f_setlabel (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_expand (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp,		/* Pointer to the file object */
 	FSIZE_t fsz,	/* File size to be expanded to */
 	BYTE opt		/* Operation mode 0:Find and prepare or 1:Find and allocate */
@@ -5637,7 +5628,7 @@ FRESULT f_expand (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_forward (
-	DIO* dio,
+	FCTX* fctx,
 	FIL* fp, 						/* Pointer to the file object */
 	UINT (*func)(const BYTE*,UINT),	/* Pointer to the streaming function */
 	UINT btf,						/* Number of bytes to forward */
@@ -5717,7 +5708,7 @@ FRESULT f_forward (
 /* Create partitions on the physical drive */
 
 static FRESULT create_partition (
-	DIO* dio,
+	FCTX* fctx,
 	BYTE drv,			/* Physical drive number */
 	const LBA_t plst[],	/* Partition list */
 	UINT sys,			/* System ID (for only MBR, temp setting) and bit8:GPT */
@@ -5730,7 +5721,7 @@ static FRESULT create_partition (
 	BYTE *pte, hd, n_hd, sc, n_sc;
 
 	/* Get drive size */
-	if (dio->disk_ioctl(dio->ctx, drv, GET_SECTOR_COUNT, &sz_drv) != RES_OK) return FR_DISK_ERR;
+	if (fctx->dio->disk_ioctl(fctx->dio->ctx, drv, GET_SECTOR_COUNT, &sz_drv) != RES_OK) return FR_DISK_ERR;
 
 #if FF_LBA64
 	if (sz_drv >= FF_MIN_GPT) {	/* Create partitions in GPT */
@@ -5741,7 +5732,7 @@ static FRESULT create_partition (
 		static const BYTE gpt_mbr[16] = {0x00, 0x00, 0x02, 0x00, 0xEE, 0xFE, 0xFF, 0x00, 0x01, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
 
 #if FF_MAX_SS != FF_MIN_SS
-		if (fs->dio->disk_ioctl(fs->dio->ctx, drv, GET_SECTOR_SIZE, &ss) != RES_OK) return FR_DISK_ERR;	/* Get sector size */
+		if (fctx->dio->disk_ioctl(fctx->dio->ctx, drv, GET_SECTOR_SIZE, &ss) != RES_OK) return FR_DISK_ERR;	/* Get sector size */
 		if (ss > FF_MAX_SS || ss < FF_MIN_SS || (ss & (ss - 1))) return FR_DISK_ERR;
 #else
 		ss = FF_MAX_SS;
@@ -5777,8 +5768,8 @@ static FRESULT create_partition (
 			}
 			if ((pi + 1) * SZ_GPTE % ss == 0) {		/* Write the buffer if it is filled up */
 				for (i = 0; i < ss; bcc = crc32(bcc, buf[i++])) ;	/* Calculate table check sum */
-				if (dio->disk_write(dio->ctx, drv, buf, 2 + pi * SZ_GPTE / ss, 1) != RES_OK) return FR_DISK_ERR;		/* Primary table */
-				if (dio->disk_write(dio->ctx, drv, buf, s_bpt + pi * SZ_GPTE / ss, 1) != RES_OK) return FR_DISK_ERR;	/* Secondary table */
+				if (fctx->dio->disk_write(fctx->dio->ctx, drv, buf, 2 + pi * SZ_GPTE / ss, 1) != RES_OK) return FR_DISK_ERR;		/* Primary table */
+				if (fctx->dio->disk_write(fctx->dio->ctx, drv, buf, s_bpt + pi * SZ_GPTE / ss, 1) != RES_OK) return FR_DISK_ERR;	/* Secondary table */
 			}
 		} while (++pi < GPT_ITEMS);
 
@@ -5796,7 +5787,7 @@ static FRESULT create_partition (
 		rnd = make_rand(rnd, buf + GPTH_DskGuid, 16);	/* Disk GUID */
 		for (i = 0, bcc= 0xFFFFFFFF; i < 92; bcc = crc32(bcc, buf[i++])) ;	/* Calculate header check sum */
 		st_dword(buf + GPTH_Bcc, ~bcc);					/* Header check sum */
-		if (dio->disk_write(dio->ctx, drv, buf, 1, 1) != RES_OK) return FR_DISK_ERR;
+		if (fctx->dio->disk_write(fctx->dio->ctx, drv, buf, 1, 1) != RES_OK) return FR_DISK_ERR;
 
 		/* Create secondary GPT header */
 		st_qword(buf + GPTH_CurLba, sz_drv - 1);		/* LBA of this header */
@@ -5805,13 +5796,13 @@ static FRESULT create_partition (
 		st_dword(buf + GPTH_Bcc, 0);
 		for (i = 0, bcc= 0xFFFFFFFF; i < 92; bcc = crc32(bcc, buf[i++])) ;	/* Calculate header check sum */
 		st_dword(buf + GPTH_Bcc, ~bcc);					/* Header check sum */
-		if (dio->disk_write(dio->ctx, drv, buf, sz_drv - 1, 1) != RES_OK) return FR_DISK_ERR;
+		if (fctx->dio->disk_write(fctx->dio->ctx, drv, buf, sz_drv - 1, 1) != RES_OK) return FR_DISK_ERR;
 
 		/* Create protective MBR */
 		mem_set(buf, 0, ss);
 		mem_cpy(buf + MBR_Table, gpt_mbr, 16);			/* Create a GPT partition */
 		st_word(buf + BS_55AA, 0xAA55);
-		if (dio->disk_write(dio->ctx, drv, buf, 0, 1) != RES_OK) return FR_DISK_ERR;
+		if (fctx->dio->disk_write(fctx->dio->ctx, drv, buf, 0, 1) != RES_OK) return FR_DISK_ERR;
 
 	} else
 #endif
@@ -5851,7 +5842,7 @@ static FRESULT create_partition (
 		}
 
 		st_word(buf + BS_55AA, 0xAA55);		/* MBR signature */
-		if (dio->disk_write(dio->ctx, drv, buf, 0, 1) != RES_OK) return FR_DISK_ERR;	/* Write it to the MBR */
+		if (fctx->dio->disk_write(fctx->dio->ctx, drv, buf, 0, 1) != RES_OK) return FR_DISK_ERR;	/* Write it to the MBR */
 	}
 
 	return FR_OK;
@@ -5860,7 +5851,7 @@ static FRESULT create_partition (
 
 
 FRESULT f_mkfs (
-	DIO* dio,
+	FCTX* fctx,
 	const TCHAR* path,		/* Logical drive number */
 	const MKFS_PARM* opt,	/* Format options */
 	void* work,				/* Pointer to working buffer (null: use heap memory) */
@@ -5885,20 +5876,20 @@ FRESULT f_mkfs (
 	/* Check mounted drive and clear work area */
 	vol = get_ldnumber(&path);					/* Get target logical drive */
 	if (vol < 0) return FR_INVALID_DRIVE;
-	if (FatFs[vol]) FatFs[vol]->fs_type = 0;	/* Clear the fs object if mounted */
+	if (fctx->FatFs[vol]) fctx->FatFs[vol]->fs_type = 0;	/* Clear the fs object if mounted */
 	pdrv = LD2PD(vol);			/* Physical drive */
 	ipart = LD2PT(vol);			/* Partition (0:create as new, 1..:get from partition table) */
 	if (!opt) opt = &defopt;	/* Use default parameter if it is not given */
 
 	/* Get physical drive status (sz_drv, sz_blk, ss) */
-	ds = dio->disk_initialize(dio->ctx, pdrv);
+	ds = fctx->dio->disk_initialize(fctx->dio->ctx, pdrv);
 	if (ds & STA_NOINIT) return FR_NOT_READY;
 	if (ds & STA_PROTECT) return FR_WRITE_PROTECTED;
 	sz_blk = opt->align;
-	if (sz_blk == 0 && dio->disk_ioctl(dio->ctx, pdrv, GET_BLOCK_SIZE, &sz_blk) != RES_OK) sz_blk = 1;
+	if (sz_blk == 0 && fctx->dio->disk_ioctl(fctx->dio->ctx, pdrv, GET_BLOCK_SIZE, &sz_blk) != RES_OK) sz_blk = 1;
  	if (sz_blk == 0 || sz_blk > 0x8000 || (sz_blk & (sz_blk - 1))) sz_blk = 1;
 #if FF_MAX_SS != FF_MIN_SS
-	if (dio->disk_ioctl(dio->ctx, pdrv, GET_SECTOR_SIZE, &ss) != RES_OK) return FR_DISK_ERR;
+	if (fctx->dio->disk_ioctl(fctx->dio->ctx, pdrv, GET_SECTOR_SIZE, &ss) != RES_OK) return FR_DISK_ERR;
 	if (ss > FF_MAX_SS || ss < FF_MIN_SS || (ss & (ss - 1))) return FR_DISK_ERR;
 #else
 	ss = FF_MAX_SS;
@@ -5923,7 +5914,7 @@ FRESULT f_mkfs (
 	b_vol = sz_vol = 0;
 	if (FF_MULTI_PARTITION && ipart != 0) {	/* Is the volume associated with any specific partition? */
 		/* Get partition location from the existing partition table */
-		if (dio->disk_read(dio->ctx, pdrv, buf, 0, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Load MBR */
+		if (fctx->dio->disk_read(fctx->dio->ctx, pdrv, buf, 0, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Load MBR */
 		if (ld_word(buf + BS_55AA) != 0xAA55) LEAVE_MKFS(FR_MKFS_ABORTED);	/* Check if MBR is valid */
 #if FF_LBA64
 		if (buf[MBR_Table + PTE_System] == 0xEE) {	/* GPT protective MBR? */
@@ -5931,13 +5922,13 @@ FRESULT f_mkfs (
 			QWORD pt_lba;
 
 			/* Get the partition location from GPT */
-			if (dio->disk_read(dio->ctx, pdrv, buf, 1, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Load GPT header sector (next to MBR) */
+			if (fctx->dio->disk_read(fctx->dio->ctx, pdrv, buf, 1, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Load GPT header sector (next to MBR) */
 			if (!test_gpt_header(buf)) LEAVE_MKFS(FR_MKFS_ABORTED);	/* Check if GPT header is valid */
 			n_ent = ld_dword(buf + GPTH_PtNum);		/* Number of entries */
 			pt_lba = ld_qword(buf + GPTH_PtOfs);	/* Table start sector */
 			ofs = i = 0;
 			while (n_ent) {		/* Find MS Basic partition with order of ipart */
-				if (ofs == 0 && dio->disk_read(dio->ctx, pdrv, buf, pt_lba++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Get PT sector */
+				if (ofs == 0 && fctx->dio->disk_read(fctx->dio->ctx, pdrv, buf, pt_lba++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Get PT sector */
 				if (!mem_cmp(buf + ofs + GPTE_PtGuid, GUID_MS_Basic, 16) && ++i == ipart) {	/* MS basic data partition? */
 					b_vol = ld_qword(buf + ofs + GPTE_FstLba);
 					sz_vol = ld_qword(buf + ofs + GPTE_LstLba) - b_vol + 1;
@@ -5956,7 +5947,7 @@ FRESULT f_mkfs (
 			sz_vol = ld_dword(pte + PTE_SizLba);	/* Get volume size */
 		}
 	} else {	/* The volume is associated with a physical drive */
-		if (dio->disk_ioctl(dio->ctx, pdrv, GET_SECTOR_COUNT, &sz_vol) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+		if (fctx->dio->disk_ioctl(fctx->dio->ctx, pdrv, GET_SECTOR_COUNT, &sz_vol) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 		if (!(fsopt & FM_SFD)) {	/* To be partitioned? */
 			/* Create a single-partition on the drive in this function */
 #if FF_LBA64
@@ -6005,7 +5996,7 @@ FRESULT f_mkfs (
 		if (sz_vol < 0x1000) LEAVE_MKFS(FR_MKFS_ABORTED);	/* Too small volume for exFAT? */
 #if FF_USE_TRIM
 		lba[0] = b_vol; lba[1] = b_vol + sz_vol - 1;	/* Inform storage device that the volume area may be erased */
-		dio->disk_ioctl(dio->ctx, pdrv, CTRL_TRIM, lba);
+		fctx->dio->disk_ioctl(fctx->dio->ctx, pdrv, CTRL_TRIM, lba);
 #endif
 		/* Determine FAT location, data location and number of clusters */
 		if (sz_au == 0) {	/* AU auto-selection */
@@ -6055,7 +6046,7 @@ FRESULT f_mkfs (
 			i += 2; szb_case += 2;
 			if (si == 0 || i == sz_buf * ss) {		/* Write buffered data when buffer full or end of process */
 				n = (i + ss - 1) / ss;
-				if (dio->disk_write(dio->ctx, pdrv, buf, sect, n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+				if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect, n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 				sect += n; i = 0;
 			}
 		} while (si);
@@ -6070,7 +6061,7 @@ FRESULT f_mkfs (
 			for (i = 0; nb >= 8 && i < sz_buf * ss; buf[i++] = 0xFF, nb -= 8) ;
 			for (b = 1; nb != 0 && i < sz_buf * ss; buf[i] |= b, b <<= 1, nb--) ;
 			n = (nsect > sz_buf) ? sz_buf : nsect;		/* Write the buffered data */
-			if (dio->disk_write(dio->ctx, pdrv, buf, sect, n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+			if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect, n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 			sect += n; nsect -= n;
 		} while (nsect);
 
@@ -6091,7 +6082,7 @@ FRESULT f_mkfs (
 				if (nb == 0 && j < 3) nb = tbl[j++];	/* Next chain */
 			} while (nb != 0 && i < sz_buf * ss);
 			n = (nsect > sz_buf) ? sz_buf : nsect;	/* Write the buffered data */
-			if (dio->disk_write(dio->ctx, pdrv, buf, sect, n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+			if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect, n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 			sect += n; nsect -= n;
 		} while (nsect);
 
@@ -6108,7 +6099,7 @@ FRESULT f_mkfs (
 		sect = b_data + sz_au * (tbl[0] + tbl[1]); nsect = sz_au;	/* Start of the root directory and number of sectors */
 		do {	/* Fill root directory sectors */
 			n = (nsect > sz_buf) ? sz_buf : nsect;
-			if (dio->disk_write(dio->ctx, pdrv, buf, sect, n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+			if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect, n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 			mem_set(buf, 0, ss);
 			sect += n; nsect -= n;
 		} while (nsect);
@@ -6137,23 +6128,23 @@ FRESULT f_mkfs (
 			for (i = sum = 0; i < ss; i++) {		/* VBR checksum */
 				if (i != BPB_VolFlagEx && i != BPB_VolFlagEx + 1 && i != BPB_PercInUseEx) sum = xsum32(buf[i], sum);
 			}
-			if (dio->disk_write(dio->ctx, pdrv, buf, sect++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+			if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 			/* Extended bootstrap record (+1..+8) */
 			mem_set(buf, 0, ss);
 			st_word(buf + ss - 2, 0xAA55);	/* Signature (placed at end of sector) */
 			for (j = 1; j < 9; j++) {
 				for (i = 0; i < ss; sum = xsum32(buf[i++], sum)) ;	/* VBR checksum */
-				if (dio->disk_write(dio->ctx, pdrv, buf, sect++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+				if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 			}
 			/* OEM/Reserved record (+9..+10) */
 			mem_set(buf, 0, ss);
 			for ( ; j < 11; j++) {
 				for (i = 0; i < ss; sum = xsum32(buf[i++], sum)) ;	/* VBR checksum */
-				if (dio->disk_write(dio->ctx, pdrv, buf, sect++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+				if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 			}
 			/* Sum record (+11) */
 			for (i = 0; i < ss; i += 4) st_dword(buf + i, sum);		/* Fill with checksum value */
-			if (dio->disk_write(dio->ctx, pdrv, buf, sect++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+			if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect++, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 		}
 
 	} else
@@ -6235,7 +6226,7 @@ FRESULT f_mkfs (
 
 #if FF_USE_TRIM
 		lba[0] = b_vol; lba[1] = b_vol + sz_vol - 1;	/* Inform storage device that the volume area may be erased */
-		dio->disk_ioctl(dio->ctx, pdrv, CTRL_TRIM, lba);
+		fctx->dio->disk_ioctl(fctx->dio->ctx, pdrv, CTRL_TRIM, lba);
 #endif
 		/* Create FAT VBR */
 		mem_set(buf, 0, ss);
@@ -6271,19 +6262,19 @@ FRESULT f_mkfs (
 			mem_cpy(buf + BS_VolLab, "NO NAME    " "FAT     ", 19);	/* Volume label, FAT signature */
 		}
 		st_word(buf + BS_55AA, 0xAA55);					/* Signature (offset is fixed here regardless of sector size) */
-		if (dio->disk_write(dio->ctx, pdrv, buf, b_vol, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Write it to the VBR sector */
+		if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, b_vol, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Write it to the VBR sector */
 
 		/* Create FSINFO record if needed */
 		if (fsty == FS_FAT32) {
-			dio->disk_write(dio->ctx, pdrv, buf, b_vol + 6, 1);		/* Write backup VBR (VBR + 6) */
+			fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, b_vol + 6, 1);		/* Write backup VBR (VBR + 6) */
 			mem_set(buf, 0, ss);
 			st_dword(buf + FSI_LeadSig, 0x41615252);
 			st_dword(buf + FSI_StrucSig, 0x61417272);
 			st_dword(buf + FSI_Free_Count, n_clst - 1);	/* Number of free clusters */
 			st_dword(buf + FSI_Nxt_Free, 2);			/* Last allocated cluster# */
 			st_word(buf + BS_55AA, 0xAA55);
-			dio->disk_write(dio->ctx, pdrv, buf, b_vol + 7, 1);		/* Write backup FSINFO (VBR + 7) */
-			dio->disk_write(dio->ctx, pdrv, buf, b_vol + 1, 1);		/* Write original FSINFO (VBR + 1) */
+			fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, b_vol + 7, 1);		/* Write backup FSINFO (VBR + 7) */
+			fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, b_vol + 1, 1);		/* Write original FSINFO (VBR + 1) */
 		}
 
 		/* Initialize FAT area */
@@ -6300,7 +6291,7 @@ FRESULT f_mkfs (
 			nsect = sz_fat;		/* Number of FAT sectors */
 			do {	/* Fill FAT sectors */
 				n = (nsect > sz_buf) ? sz_buf : nsect;
-				if (dio->disk_write(dio->ctx, pdrv, buf, sect, (UINT)n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+				if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect, (UINT)n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 				mem_set(buf, 0, ss);	/* Rest of FAT all are cleared */
 				sect += n; nsect -= n;
 			} while (nsect);
@@ -6310,7 +6301,7 @@ FRESULT f_mkfs (
 		nsect = (fsty == FS_FAT32) ? pau : sz_dir;	/* Number of root directory sectors */
 		do {
 			n = (nsect > sz_buf) ? sz_buf : nsect;
-			if (dio->disk_write(dio->ctx, pdrv, buf, sect, (UINT)n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+			if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, sect, (UINT)n) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 			sect += n; nsect -= n;
 		} while (nsect);
 	}
@@ -6336,19 +6327,19 @@ FRESULT f_mkfs (
 	if (FF_MULTI_PARTITION && ipart != 0) {	/* Volume is in the existing partition */
 		if (!FF_LBA64 || !(fsopt & 0x80)) {
 			/* Update system ID in the partition table */
-			if (dio->disk_read(dio->ctx, pdrv, buf, 0, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Read the MBR */
+			if (fctx->dio->disk_read(fctx->dio->ctx, pdrv, buf, 0, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Read the MBR */
 			buf[MBR_Table + (ipart - 1) * SZ_PTE + PTE_System] = sys;			/* Set system ID */
-			if (dio->disk_write(dio->ctx, pdrv, buf, 0, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Write it back to the MBR */
+			if (fctx->dio->disk_write(fctx->dio->ctx, pdrv, buf, 0, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Write it back to the MBR */
 		}
 	} else {								/* Volume as a new single partition */
 		if (!(fsopt & FM_SFD)) {	/* Create partition table if not in SFD */
 			lba[0] = sz_vol, lba[1] = 0;
-			fr = create_partition(dio, pdrv, lba, sys, buf);
+			fr = create_partition(fctx, pdrv, lba, sys, buf);
 			if (fr != FR_OK) LEAVE_MKFS(fr);
 		}
 	}
 
-	if (dio->disk_ioctl(dio->ctx, pdrv, CTRL_SYNC, 0) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
+	if (fctx->dio->disk_ioctl(fctx->dio->ctx, pdrv, CTRL_SYNC, 0) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
 
 	LEAVE_MKFS(FR_OK);
 }
@@ -6362,7 +6353,7 @@ FRESULT f_mkfs (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_fdisk (
-	DIO* dio,
+	FCTX* fctx,
 	BYTE pdrv,			/* Physical drive number */
 	const LBA_t ptbl[],	/* Pointer to the size table for each partitions */
 	void* work			/* Pointer to the working buffer (null: use heap memory) */
@@ -6372,7 +6363,7 @@ FRESULT f_fdisk (
 	DSTATUS stat;
 
 
-	stat = dio->disk_initialize(dio->ctx, pdrv);
+	stat = fctx->dio->disk_initialize(fctx->dio->ctx, pdrv);
 	if (stat & STA_NOINIT) return FR_NOT_READY;
 	if (stat & STA_PROTECT) return FR_WRITE_PROTECTED;
 #if FF_USE_LFN == 3
@@ -6380,7 +6371,7 @@ FRESULT f_fdisk (
 #endif
 	if (!buf) return FR_NOT_ENOUGH_CORE;
 
-	LEAVE_MKFS(create_partition(dio, pdrv, ptbl, 0x07, buf));
+	LEAVE_MKFS(create_partition(fctx->dio, pdrv, ptbl, 0x07, buf));
 }
 
 #endif /* FF_MULTI_PARTITION */
@@ -6855,7 +6846,7 @@ int f_printf (
 /*-----------------------------------------------------------------------*/
 
 FRESULT f_setcp (
-	DIO* dio,
+	FCTX* fctx,
 	WORD cp		/* Value to be set as active code page */
 )
 {
