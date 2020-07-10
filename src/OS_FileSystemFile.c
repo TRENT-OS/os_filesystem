@@ -7,9 +7,6 @@
 // For definition of OS_FileSystem, has to be included after the global header
 #include "include/OS_FileSystem.h"
 
-#include "include/lib/LittleFsFile.h"
-#include "include/lib/FatFsFile.h"
-
 #if defined(OS_FILESYSTEM_REMOVE_DEBUG_LOGGING)
 #undef Debug_Config_PRINT_TO_LOG_SERVER
 #endif
@@ -99,21 +96,7 @@ OS_FileSystemFile_open(
         return OS_ERROR_NOT_FOUND;
     }
 
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        err = LittleFsFile_open(self, *hFile, name, mode, flags);
-        break;
-    case OS_FileSystem_Type_FATFS:
-        err = FatFsFile_open(self, *hFile, name, mode, flags);
-        break;
-    default:
-        err = OS_ERROR_INVALID_PARAMETER;
-        break;
-    }
-
-    // Mark file ID as "in use"
-    if (err == OS_SUCCESS)
+    if ((err = self->fileOps->open(self, *hFile, name, mode, flags)) == OS_SUCCESS)
     {
         fileHandle_take(self, *hFile);
     }
@@ -137,21 +120,7 @@ OS_FileSystemFile_close(
         return OS_ERROR_INVALID_HANDLE;
     }
 
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        err = LittleFsFile_close(self, hFile);
-        break;
-    case OS_FileSystem_Type_FATFS:
-        err = FatFsFile_close(self, hFile);
-        break;
-    default:
-        err = OS_ERROR_INVALID_PARAMETER;
-        break;
-    }
-
-    // Release file ID
-    if (err == OS_SUCCESS)
+    if ((err = self->fileOps->close(self, hFile)) == OS_SUCCESS)
     {
         fileHandle_release(self, hFile);
     }
@@ -167,8 +136,6 @@ OS_FileSystemFile_read(
     const size_t               len,
     void*                      buffer)
 {
-    OS_Error_t err;
-
     if (NULL == self || NULL == buffer)
     {
         return OS_ERROR_INVALID_PARAMETER;
@@ -178,20 +145,7 @@ OS_FileSystemFile_read(
         return OS_ERROR_INVALID_HANDLE;
     }
 
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        err = LittleFsFile_read(self, hFile, offset, len, buffer);
-        break;
-    case OS_FileSystem_Type_FATFS:
-        err = FatFsFile_read(self, hFile, offset, len, buffer);
-        break;
-    default:
-        err = OS_ERROR_INVALID_PARAMETER;
-        break;
-    }
-
-    return err;
+    return self->fileOps->read(self, hFile, offset, len, buffer);
 }
 
 OS_Error_t
@@ -202,8 +156,6 @@ OS_FileSystemFile_write(
     const size_t               len,
     const void*                buffer)
 {
-    OS_Error_t err;
-
     if (NULL == self || NULL == buffer)
     {
         return OS_ERROR_INVALID_PARAMETER;
@@ -213,20 +165,7 @@ OS_FileSystemFile_write(
         return OS_ERROR_INVALID_HANDLE;
     }
 
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        err = LittleFsFile_write(self, hFile, offset, len, buffer);
-        break;
-    case OS_FileSystem_Type_FATFS:
-        err = FatFsFile_write(self, hFile, offset, len, buffer);
-        break;
-    default:
-        err = OS_ERROR_INVALID_PARAMETER;
-        break;
-    }
-
-    return err;
+    return self->fileOps->write(self, hFile, offset, len, buffer);
 }
 
 OS_Error_t
@@ -234,27 +173,12 @@ OS_FileSystemFile_delete(
     OS_FileSystem_Handle_t self,
     const char*            name)
 {
-    OS_Error_t err;
-
     if (NULL == self || NULL == name)
     {
         return OS_ERROR_INVALID_PARAMETER;
     }
 
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        err = LittleFsFile_delete(self, name);
-        break;
-    case OS_FileSystem_Type_FATFS:
-        err = FatFsFile_delete(self, name);
-        break;
-    default:
-        err = OS_ERROR_INVALID_PARAMETER;
-        break;
-    }
-
-    return err;
+    return self->fileOps->delete(self, name);
 }
 
 OS_Error_t
@@ -263,25 +187,10 @@ OS_FileSystemFile_getSize(
     const char*            name,
     size_t*                sz)
 {
-    OS_Error_t err;
-
     if (NULL == self || NULL == name || NULL == sz)
     {
         return OS_ERROR_INVALID_PARAMETER;
     }
 
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        err = LittleFsFile_getSize(self, name, sz);
-        break;
-    case OS_FileSystem_Type_FATFS:
-        err = FatFsFile_getSize(self, name, sz);
-        break;
-    default:
-        err = OS_ERROR_INVALID_PARAMETER;
-        break;
-    }
-
-    return err;
+    return self->fileOps->getSize(self, name, sz);
 }

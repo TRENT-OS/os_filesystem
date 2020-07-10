@@ -8,7 +8,9 @@
 #include "include/OS_FileSystem.h"
 
 #include "include/lib/LittleFs.h"
+#include "include/lib/LittleFsFile.h"
 #include "include/lib/FatFs.h"
+#include "include/lib/FatFsFile.h"
 
 #if defined(OS_FILESYSTEM_REMOVE_DEBUG_LOGGING)
 #undef Debug_Config_PRINT_TO_LOG_SERVER
@@ -19,6 +21,46 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+// LittleFs callbacks
+static const OS_FileSystem_FsOps_t littleFs_ops =
+{
+    .init       = LittleFs_init,
+    .free       = LittleFs_free,
+    .format     = LittleFs_format,
+    .mount      = LittleFs_mount,
+    .unmount    = LittleFs_unmount,
+    .wipe       = LittleFs_wipe,
+};
+static const OS_FileSystem_FileOps_t littleFsFile_ops =
+{
+    .open       = LittleFsFile_open,
+    .close      = LittleFsFile_close,
+    .read       = LittleFsFile_read,
+    .write      = LittleFsFile_write,
+    .delete     = LittleFsFile_delete,
+    .getSize    = LittleFsFile_getSize,
+};
+
+// FatFs callbacks
+static const OS_FileSystem_FsOps_t fatFs_ops =
+{
+    .init       = FatFs_init,
+    .free       = FatFs_free,
+    .format     = FatFs_format,
+    .mount      = FatFs_mount,
+    .unmount    = FatFs_unmount,
+    .wipe       = FatFs_wipe,
+};
+static const OS_FileSystem_FileOps_t fatFsFile_ops =
+{
+    .open       = FatFsFile_open,
+    .close      = FatFsFile_close,
+    .read       = FatFsFile_read,
+    .write      = FatFsFile_write,
+    .delete     = FatFsFile_delete,
+    .getSize    = FatFsFile_getSize,
+};
 
 // Private Functions -----------------------------------------------------------
 
@@ -84,16 +126,12 @@ OS_FileSystem_init(
     switch (cfg->type)
     {
     case OS_FileSystem_Type_LITTLEFS:
-        if ((err = LittleFs_init(fs)) != OS_SUCCESS)
-        {
-            goto err0;
-        }
+        fs->fsOps   = &littleFs_ops;
+        fs->fileOps = &littleFsFile_ops;
         break;
     case OS_FileSystem_Type_FATFS:
-        if ((err = FatFs_init(fs)) != OS_SUCCESS)
-        {
-            goto err0;
-        }
+        fs->fsOps   = &fatFs_ops;
+        fs->fileOps = &fatFsFile_ops;
         break;
     default:
         err = OS_ERROR_INVALID_PARAMETER;
@@ -102,7 +140,7 @@ OS_FileSystem_init(
 
     *self = fs;
 
-    return OS_SUCCESS;
+    return fs->fsOps->init(fs);
 
 err0:
     free(fs);
@@ -120,19 +158,7 @@ OS_FileSystem_free(
         return OS_ERROR_INVALID_PARAMETER;
     }
 
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        err = LittleFs_free(self);
-        break;
-    case OS_FileSystem_Type_FATFS:
-        err = FatFs_free(self);
-        break;
-    default:
-        err = OS_ERROR_GENERIC;;
-        break;
-    }
-
+    err = self->fsOps->free(self);
     free(self);
 
     return err;
@@ -142,86 +168,34 @@ OS_Error_t
 OS_FileSystem_format(
     OS_FileSystem_Handle_t self)
 {
-    if (NULL == self)
-    {
-        return OS_ERROR_INVALID_PARAMETER;
-    }
-
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        return LittleFs_format(self);
-    case OS_FileSystem_Type_FATFS:
-        return FatFs_format(self);
-    default:
-        break;
-    }
-
-    return OS_ERROR_GENERIC;
+    return (NULL == self) ?
+           OS_ERROR_INVALID_PARAMETER :
+           self->fsOps->format(self);
 }
 
 OS_Error_t
 OS_FileSystem_mount(
     OS_FileSystem_Handle_t self)
 {
-    if (NULL == self)
-    {
-        return OS_ERROR_INVALID_PARAMETER;
-    }
-
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        return LittleFs_mount(self);
-    case OS_FileSystem_Type_FATFS:
-        return FatFs_mount(self);
-    default:
-        break;
-    }
-
-    return OS_ERROR_GENERIC;
+    return (NULL == self) ?
+           OS_ERROR_INVALID_PARAMETER :
+           self->fsOps->mount(self);
 }
 
 OS_Error_t
 OS_FileSystem_unmount(
     OS_FileSystem_Handle_t self)
 {
-    if (NULL == self)
-    {
-        return OS_ERROR_INVALID_PARAMETER;
-    }
-
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        return LittleFs_unmount(self);
-    case OS_FileSystem_Type_FATFS:
-        return FatFs_unmount(self);
-    default:
-        break;
-    }
-
-    return OS_ERROR_GENERIC;
+    return (NULL == self) ?
+           OS_ERROR_INVALID_PARAMETER :
+           self->fsOps->unmount(self);
 }
 
 OS_Error_t
 OS_FileSystem_wipe(
     OS_FileSystem_Handle_t self)
 {
-    if (NULL == self)
-    {
-        return OS_ERROR_INVALID_PARAMETER;
-    }
-
-    switch (self->cfg.type)
-    {
-    case OS_FileSystem_Type_LITTLEFS:
-        return LittleFs_wipe(self);
-    case OS_FileSystem_Type_FATFS:
-        return FatFs_wipe(self);
-    default:
-        break;
-    }
-
-    return OS_ERROR_GENERIC;
+    return (NULL == self) ?
+           OS_ERROR_INVALID_PARAMETER :
+           self->fsOps->wipe(self);
 }
