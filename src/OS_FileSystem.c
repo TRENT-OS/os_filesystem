@@ -11,6 +11,8 @@
 #include "include/lib/LittleFsFile.h"
 #include "include/lib/FatFs.h"
 #include "include/lib/FatFsFile.h"
+#include "include/lib/SpifFs.h"
+#include "include/lib/SpifFsFile.h"
 
 #if defined(OS_FILESYSTEM_REMOVE_DEBUG_LOGGING)
 #undef Debug_Config_PRINT_TO_LOG_SERVER
@@ -60,6 +62,26 @@ static const OS_FileSystem_FileOps_t fatFsFile_ops =
     .write      = FatFsFile_write,
     .delete     = FatFsFile_delete,
     .getSize    = FatFsFile_getSize,
+};
+
+// SpifFs callbacks
+static const OS_FileSystem_FsOps_t spifFs_ops =
+{
+    .init       = SpifFs_init,
+    .free       = SpifFs_free,
+    .format     = SpifFs_format,
+    .mount      = SpifFs_mount,
+    .unmount    = SpifFs_unmount,
+    .wipe       = SpifFs_wipe,
+};
+static const OS_FileSystem_FileOps_t spifFsFile_ops =
+{
+    .open       = SpifFsFile_open,
+    .close      = SpifFsFile_close,
+    .read       = SpifFsFile_read,
+    .write      = SpifFsFile_write,
+    .delete     = SpifFsFile_delete,
+    .getSize    = SpifFsFile_getSize,
 };
 
 // Private Functions -----------------------------------------------------------
@@ -132,6 +154,10 @@ OS_FileSystem_init(
     case OS_FileSystem_Type_FATFS:
         fs->fsOps   = &fatFs_ops;
         fs->fileOps = &fatFsFile_ops;
+        break;
+    case OS_FileSystem_Type_SPIFFS:
+        fs->fsOps   = &spifFs_ops;
+        fs->fileOps = &spifFsFile_ops;
         break;
     default:
         err = OS_ERROR_INVALID_PARAMETER;

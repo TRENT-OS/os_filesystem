@@ -77,6 +77,10 @@ struct OS_FileSystem
             FIL fh[MAX_FILE_HANDLES];
             uint8_t buffer[FF_MAX_SS];
         } fatFs;
+        struct
+        {
+            int dummy;
+        } spifFs;
     } fs;
     // Array for keeping track which file handles are in use
     bool inUse[MAX_FILE_HANDLES];

@@ -16,6 +16,8 @@ target_sources(${PROJECT_NAME}
         src/OS_FileSystemFile.c
         src/lib/LittleFs.c
         src/lib/LittleFsFile.c
+        src/lib/SpifFs.c
+        src/lib/SpifFsFile.c
         src/lib/FatFs.c
         src/lib/FatFsFile.c
         3rdParty/littlefs/src/lfs.c
