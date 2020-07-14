@@ -12,6 +12,10 @@
 // For LittleFS
 #include "lfs.h"
 
+// For FatFs
+#include "ff.h"
+#include "diskio.h"
+
 // Amount of file handles we can have open at a time
 #define MAX_FILE_HANDLES    32
 
@@ -25,6 +29,13 @@ struct OS_FileSystem
             struct lfs_config cfg;
             lfs_file_t fh[MAX_FILE_HANDLES];
         } littleFs;
+        struct {
+            DIO dio;
+            FCTX fctx;
+            FATFS fs;
+            FIL fh[MAX_FILE_HANDLES];
+            uint8_t buffer[FF_MAX_SS];
+        } fatFs;
     } fs;
     // Array for keeping track which file handles are in use
     bool inUse[MAX_FILE_HANDLES];
