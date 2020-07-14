@@ -50,10 +50,6 @@ FatFsFile_open(
     {
         oflags |= FA_CREATE_ALWAYS;
     }
-    if (flags & OS_FileSystem_OpenFlags_APPEND)
-    {
-        oflags |= FA_OPEN_APPEND;
-    }
     if (flags & OS_FileSystem_OpenFlags_EXCLUSIVE ||
         flags & OS_FileSystem_OpenFlags_TRUNCATE)
     {

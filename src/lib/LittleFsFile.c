@@ -58,10 +58,6 @@ LittleFsFile_open(
     {
         oflags |= LFS_O_TRUNC;
     }
-    if (flags & OS_FileSystem_OpenFlags_APPEND)
-    {
-        oflags |= LFS_O_APPEND;
-    }
 
     if ((rc = lfs_file_open(fs, fh, name, oflags)) < 0)
     {
