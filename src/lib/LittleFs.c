@@ -212,7 +212,7 @@ LittleFs_format(
         Debug_LOG_ERROR("lfs_format() failed with %i", rc);
     }
 
-    return (rc < 0) ? OS_ERROR_GENERIC : OS_SUCCESS;
+    return (rc < 0) ? OS_ERROR_ABORTED : OS_SUCCESS;
 }
 
 OS_Error_t
@@ -228,7 +228,7 @@ LittleFs_mount(
         Debug_LOG_ERROR("lfs_mount() failed with %i", rc);
     }
 
-    return (rc < 0) ? OS_ERROR_GENERIC : OS_SUCCESS;
+    return (rc < 0) ? OS_ERROR_ABORTED : OS_SUCCESS;
 }
 
 OS_Error_t

@@ -93,7 +93,7 @@ OS_FileSystemFile_open(
     if ((*hFile = fileHandle_findFree(self)) < 0)
     {
         Debug_LOG_ERROR("All file handles are in use");
-        return OS_ERROR_NOT_FOUND;
+        return OS_ERROR_OUT_OF_BOUNDS;
     }
 
     if ((err = self->fileOps->open(self, *hFile, name, mode, flags)) == OS_SUCCESS)

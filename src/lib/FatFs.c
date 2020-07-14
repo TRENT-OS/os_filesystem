@@ -240,7 +240,7 @@ FatFs_format(
                      sizeof(self->fs.fatFs.buffer))) != FR_OK)
     {
         Debug_LOG_ERROR("f_mkfs() failed with %i", rc);
-        return OS_ERROR_GENERIC;
+        return OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
@@ -259,7 +259,7 @@ FatFs_mount(
                       &self->fs.fatFs.fs, "", mountNow)) != FR_OK)
     {
         Debug_LOG_ERROR("f_mount() failed with %i", rc);
-        return OS_ERROR_GENERIC;
+        return OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
@@ -274,7 +274,7 @@ FatFs_unmount(
     if ((rc = f_mount(&self->fs.fatFs.fctx, NULL, "", 0)) != FR_OK)
     {
         Debug_LOG_ERROR("f_mount() failed with %i", rc);
-        return OS_ERROR_GENERIC;
+        return OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
