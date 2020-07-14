@@ -245,10 +245,3 @@ LittleFs_unmount(
 
     return (rc < 0) ? OS_ERROR_GENERIC : OS_SUCCESS;
 }
-
-OS_Error_t
-LittleFs_wipe(
-    OS_FileSystem_Handle_t self)
-{
-    return OS_ERROR_NOT_IMPLEMENTED;
-}

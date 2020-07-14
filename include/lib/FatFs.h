@@ -25,7 +25,3 @@ FatFs_mount(
 OS_Error_t
 FatFs_unmount(
     OS_FileSystem_Handle_t self);
-
-OS_Error_t
-FatFs_wipe(
-    OS_FileSystem_Handle_t self);

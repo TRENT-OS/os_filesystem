@@ -25,7 +25,3 @@ LittleFs_mount(
 OS_Error_t
 LittleFs_unmount(
     OS_FileSystem_Handle_t self);
-
-OS_Error_t
-LittleFs_wipe(
-    OS_FileSystem_Handle_t self);

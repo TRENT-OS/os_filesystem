@@ -52,10 +52,3 @@ SpifFs_unmount(
 {
     return OS_ERROR_NOT_IMPLEMENTED;
 }
-
-OS_Error_t
-SpifFs_wipe(
-    OS_FileSystem_Handle_t self)
-{
-    return OS_ERROR_NOT_IMPLEMENTED;
-}

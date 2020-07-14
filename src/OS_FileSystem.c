@@ -32,7 +32,6 @@ static const OS_FileSystem_FsOps_t littleFs_ops =
     .format     = LittleFs_format,
     .mount      = LittleFs_mount,
     .unmount    = LittleFs_unmount,
-    .wipe       = LittleFs_wipe,
 };
 static const OS_FileSystem_FileOps_t littleFsFile_ops =
 {
@@ -52,7 +51,6 @@ static const OS_FileSystem_FsOps_t fatFs_ops =
     .format     = FatFs_format,
     .mount      = FatFs_mount,
     .unmount    = FatFs_unmount,
-    .wipe       = FatFs_wipe,
 };
 static const OS_FileSystem_FileOps_t fatFsFile_ops =
 {
@@ -72,7 +70,6 @@ static const OS_FileSystem_FsOps_t spifFs_ops =
     .format     = SpifFs_format,
     .mount      = SpifFs_mount,
     .unmount    = SpifFs_unmount,
-    .wipe       = SpifFs_wipe,
 };
 static const OS_FileSystem_FileOps_t spifFsFile_ops =
 {
@@ -215,13 +212,4 @@ OS_FileSystem_unmount(
     return (NULL == self) ?
            OS_ERROR_INVALID_PARAMETER :
            self->fsOps->unmount(self);
-}
-
-OS_Error_t
-OS_FileSystem_wipe(
-    OS_FileSystem_Handle_t self)
-{
-    return (NULL == self) ?
-           OS_ERROR_INVALID_PARAMETER :
-           self->fsOps->wipe(self);
 }
