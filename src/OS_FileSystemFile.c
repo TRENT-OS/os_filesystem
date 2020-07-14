@@ -23,13 +23,15 @@ fileHandle_findFree(
     OS_FileSystem_Handle_t self)
 {
     size_t i;
+    uint64_t m;
 
+    m = self->usageMask;
     for (i = 0; i < MAX_FILE_HANDLES; i++)
     {
-        if (!self->inUse[i])
-        {
+        if ((m & 1ULL) == 0) {
             return i;
         }
+        m >>= 1;
     }
 
     return -1;
@@ -40,7 +42,7 @@ fileHandle_take(
     OS_FileSystem_Handle_t           self,
     const OS_FileSystemFile_Handle_t hFile)
 {
-    self->inUse[hFile] = true;
+    self->usageMask |= (1ULL << hFile);
 }
 
 static void
@@ -48,7 +50,7 @@ fileHandle_release(
     OS_FileSystem_Handle_t           self,
     const OS_FileSystemFile_Handle_t hFile)
 {
-    self->inUse[hFile] = false;
+    self->usageMask &= ~(1ULL << hFile);
 }
 
 static bool
@@ -56,7 +58,7 @@ fileHandle_inUse(
     OS_FileSystem_Handle_t           self,
     const OS_FileSystemFile_Handle_t hFile)
 {
-    return self->inUse[hFile];
+    return (self->usageMask & (1ULL << hFile));
 }
 
 static bool

@@ -52,8 +52,11 @@ typedef struct
                           size_t*                sz);
 } OS_FileSystem_FileOps_t;
 
-// Amount of file handles we can have open at a time
-#define MAX_FILE_HANDLES    32
+/*
+ * We use a bit-mask to keep track of open file handles, so we cannot exceed the
+ * size of this mask
+ */
+#define MAX_FILE_HANDLES    sizeof(uint64_t)
 
 // Hidden definition of struct
 struct OS_FileSystem
@@ -82,6 +85,5 @@ struct OS_FileSystem
             int dummy;
         } spifFs;
     } fs;
-    // Array for keeping track which file handles are in use
-    bool inUse[MAX_FILE_HANDLES];
+    uint64_t usageMask;
 };
