@@ -25,6 +25,11 @@ target_sources(${PROJECT_NAME}
         3rdParty/fatfs/src/ff.c
         3rdParty/fatfs/src/ffsystem.c
         3rdParty/fatfs/src/ffunicode.c
+	3rdParty/spiffs/src/spiffs_cache.c
+	3rdParty/spiffs/src/spiffs_gc.c
+	3rdParty/spiffs/src/spiffs_nucleus.c
+	3rdParty/spiffs/src/spiffs_check.c
+	3rdParty/spiffs/src/spiffs_hydrogen.c
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -32,6 +37,7 @@ target_include_directories(${PROJECT_NAME}
         include
         3rdParty/littlefs/include
         3rdParty/fatfs/include
+        3rdParty/spiffs/include
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -44,7 +50,6 @@ target_compile_options(${PROJECT_NAME}
        -Wall
        -Werror
 )
-
 
 #-------------------------------------------------------------------------------
 # if invoked from the OS sandbox, provide a documentation build target
@@ -70,3 +75,4 @@ if (COMMAND os_create_doxygen_target)
     )
 
 endif()
+

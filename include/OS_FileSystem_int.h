@@ -13,6 +13,9 @@
 #include "ff.h"
 #include "diskio.h"
 
+// For SpifFs
+#include "spiffs.h"
+
 typedef struct
 {
     OS_Error_t (*init) (OS_FileSystem_Handle_t  self);
@@ -79,8 +82,16 @@ struct OS_FileSystem
         } fatFs;
         struct
         {
-            int dummy;
+            spiffs fs;
+            spiffs_config cfg;
+            spiffs_file fh[MAX_FILE_HANDLES];
+            // 56 corresponds to sizeof(spiffs_fd) (spiffs_nucleus.h)
+            uint8_t spiffs_fds[MAX_FILE_HANDLES * 56];
+            // 256 corresponds to LOG_PAGE_SIZE
+            uint8_t spiffs_work_buf[256 * 2];
+            uint8_t spiffs_cache_buf[(256 + 32) * 4];
         } spifFs;
     } fs;
     uint64_t usageMask;
 };
+
