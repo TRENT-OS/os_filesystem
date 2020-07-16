@@ -44,3 +44,29 @@ target_compile_options(${PROJECT_NAME}
        -Wall
        -Werror
 )
+
+
+#-------------------------------------------------------------------------------
+# if invoked from the OS sandbox, provide a documentation build target
+if (COMMAND os_create_doxygen_target)
+
+    get_target_property(
+        OS_CORE_API_INCLUDES
+        os_core_api
+        INTERFACE_INCLUDE_DIRECTORIES)
+
+    find_file(
+        OS_FILESYSTEM_API_HEADER
+        OS_FileSystem.h
+        PATHS ${OS_CORE_API_INCLUDES}
+        CMAKE_FIND_ROOT_PATH_BOTH)
+
+    os_create_doxygen_target( os_filesystem_doc
+        # pre-step: link the API file OS_FileSystem.h from os_core_api in
+        #           order to produce a complete doxygen documentation
+        "ln -sf ${OS_FILESYSTEM_API_HEADER} ${CMAKE_CURRENT_SOURCE_DIR}/include"
+        # post-step: remove the link to OS_FileSystem.h
+        "rm -f ${CMAKE_CURRENT_SOURCE_DIR}/include/OS_FileSystem.h"
+    )
+
+endif()
