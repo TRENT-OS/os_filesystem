@@ -4,10 +4,7 @@
 
 #pragma once
 
-/*
- * Include this file only after including OS_FileSystem from the API headers;
- * and only use this internally to resolve anonymous structs..
- */
+#include "OS_FileSystem.h"
 
 // For LittleFS
 #include "lfs.h"

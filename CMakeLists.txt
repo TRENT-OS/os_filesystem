@@ -29,7 +29,7 @@ target_sources(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
     INTERFACE
-        ./
+        include
         3rdParty/littlefs/include
         3rdParty/fatfs/include
 )

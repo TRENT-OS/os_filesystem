@@ -3,9 +3,7 @@
  */
 
 #include "OS_FileSystem.h"
-
-// For definition of OS_FileSystem, has to be included after the global header
-#include "include/OS_FileSystem.h"
+#include "OS_FileSystem_int.h"
 
 #include "ff.h"
 #include "diskio.h"

@@ -3,16 +3,14 @@
  */
 
 #include "OS_FileSystem.h"
+#include "OS_FileSystem_int.h"
 
-// For definition of OS_FileSystem, has to be included after the global header
-#include "include/OS_FileSystem.h"
-
-#include "include/lib/LittleFs.h"
-#include "include/lib/LittleFsFile.h"
-#include "include/lib/FatFs.h"
-#include "include/lib/FatFsFile.h"
-#include "include/lib/SpifFs.h"
-#include "include/lib/SpifFsFile.h"
+#include "lib/LittleFs.h"
+#include "lib/LittleFsFile.h"
+#include "lib/FatFs.h"
+#include "lib/FatFsFile.h"
+#include "lib/SpifFs.h"
+#include "lib/SpifFsFile.h"
 
 #if defined(OS_FILESYSTEM_REMOVE_DEBUG_LOGGING)
 #undef Debug_Config_PRINT_TO_LOG_SERVER
