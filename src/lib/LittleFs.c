@@ -96,7 +96,7 @@ storage_prog(
 
     if (written != size)
     {
-        Debug_LOG_ERROR("write() requested to write %d bytes but got %zu bytes",
+        Debug_LOG_ERROR("write() requested to write %u bytes but got %zu bytes",
                         size, written);
         return OS_ERROR_ABORTED;
     }

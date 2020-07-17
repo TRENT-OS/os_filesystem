@@ -87,7 +87,7 @@ storage_write(
 
     if (written != size)
     {
-        Debug_LOG_ERROR("write() requested to write %d bytes but got %zu bytes",
+        Debug_LOG_ERROR("write() requested to write %u bytes but got %zu bytes",
                         size, written);
         return OS_ERROR_ABORTED;
     }
@@ -113,7 +113,7 @@ storage_erase(
 
     if (erased != size)
     {
-        Debug_LOG_ERROR("erase() requested to erase %zu bytes but erased %zu bytes",
+        Debug_LOG_ERROR("erase() requested to erase %u bytes but erased %zu bytes",
                         size, erased);
         return OS_ERROR_ABORTED;
     }
@@ -141,8 +141,8 @@ SpifFs_init(
     blockSz = cfg->format->spifFs.logicalBlockSize;
     if (pageSz >= blockSz)
     {
-        Debug_LOG_ERROR("Block size (%i bytes) is smaller than page size "
-                        "(%i bytes)", blockSz, pageSz);
+        Debug_LOG_ERROR("Block size (%zu bytes) is smaller than page size "
+                        "(%zu bytes)", blockSz, pageSz);
         return OS_ERROR_INVALID_PARAMETER;
     }
 

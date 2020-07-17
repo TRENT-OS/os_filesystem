@@ -99,22 +99,22 @@ SpifFsFile_read(
 
     if ((off = SPIFFS_lseek(fs, *file, offset, SPIFFS_SEEK_SET)) < 0)
     {
-        Debug_LOG_ERROR("SPIFFS_lseek() failed with %d", off);
+        Debug_LOG_ERROR("SPIFFS_lseek() failed with %zu", off);
         return OS_ERROR_ABORTED;
     }
     if (off != offset)
     {
-        Debug_LOG_ERROR("SPIFFS_lseek() jumped to offset %i instead of offset %zu",
+        Debug_LOG_ERROR("SPIFFS_lseek() jumped to offset %zu instead of offset %zu",
                         off, offset);
     }
     if ((sz = SPIFFS_read(fs, *file, buffer, len)) < 0)
     {
-        Debug_LOG_ERROR("SPIFFS_read() failed with %d", sz);
+        Debug_LOG_ERROR("SPIFFS_read() failed with %zu", sz);
         return OS_ERROR_ABORTED;
     }
     if (sz != len)
     {
-        Debug_LOG_ERROR("SPIFFS_read() read %i bytes instead of %zu bytes",
+        Debug_LOG_ERROR("SPIFFS_read() read %zu bytes instead of %zu bytes",
                         sz, len);
     }
 
@@ -137,23 +137,23 @@ SpifFsFile_write(
 
     if ((off = SPIFFS_lseek(fs, *file, offset, SPIFFS_SEEK_SET)) < 0)
     {
-        Debug_LOG_ERROR("SPIFFS_lseek() failed with %d", off);
+        Debug_LOG_ERROR("SPIFFS_lseek() failed with %zu", off);
         return OS_ERROR_ABORTED;
     }
     if (off != offset)
     {
-        Debug_LOG_ERROR("SPIFFS_lseek() jumped to offset %i instead of offset %zu",
+        Debug_LOG_ERROR("SPIFFS_lseek() jumped to offset %zu instead of offset %zu",
                         off, offset);
     }
 
     if ((sz = SPIFFS_write(fs, *file, (void *) buffer, len)) < 0)
     {
-        Debug_LOG_ERROR("SPIFFS_write() failed with %d", sz);
+        Debug_LOG_ERROR("SPIFFS_write() failed with %zu", sz);
         return OS_ERROR_ABORTED;
     }
     if (sz != len)
     {
-        Debug_LOG_ERROR("SPIFFS_write() wrote %i bytes instead of %zu bytes",
+        Debug_LOG_ERROR("SPIFFS_write() wrote %zu bytes instead of %zu bytes",
                         sz, len);
     }
 

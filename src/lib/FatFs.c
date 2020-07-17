@@ -169,7 +169,7 @@ FatFs_init(
     if (cfg->size % cfg->format->fatFs.sectorSize)
     {
         Debug_LOG_ERROR("Storage size of %zu bytes is not aligned with "
-                        "sector size of %i bytes",
+                        "sector size of %u bytes",
                         cfg->size, cfg->format->fatFs.blockSize);
         return OS_ERROR_INVALID_PARAMETER;
     }
