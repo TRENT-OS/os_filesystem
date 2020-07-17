@@ -86,9 +86,9 @@ struct OS_FileSystem
             spiffs fs;
             spiffs_config cfg;
             spiffs_file fh[MAX_FILE_HANDLES];
-            uint8_t spiffs_fds[MAX_FILE_HANDLES * sizeof(spiffs_fd)];
-            uint8_t* spiffs_work_buf;
-            uint8_t* spiffs_cache_buf;
+            uint8_t fds[MAX_FILE_HANDLES * sizeof(spiffs_fd)];
+            uint8_t* workBuf;
+            uint8_t* cacheBuf;
             size_t cacheSize;
         } spifFs;
     } fs;

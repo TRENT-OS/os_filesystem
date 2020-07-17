@@ -12,37 +12,32 @@
 
 #include <string.h>
 
-
 #include "spiffs.h"
 #include "spiffs_config.h"
 
-
-/* Defines -------------------------------------------------------------------*/
-
-
-
-/* Private variables ---------------------------------------------------------*/
-
+// This is an offset into the spiffs file system structure, which we do not want
+// the user to set manually. It can be done via the StorageServer.
+#define SPIFFS_DEFAULT_PHYS_ADDR 0
 static const OS_FileSystem_Format_t SpifFs_defaultConfig =
 {
-    // the spiffs page size has to be smaller than the spiffs block size
     .spifFs = {
-        .physEraseBlock = 4096,
-        .logBlockSize   = 4096,
-        .logPageSize    = 256,
-        .physAddr       = 0,
-        .cachePages     = 16,
+        .eraseBlockSize   = 4096,
+        .logicalBlockSize = 4096,
+        .logicalPageSize  = 256,
+        .cachePages       = 16,
     }
 };
 
-
 // Private Functions -----------------------------------------------------------
 
-
-static int32_t spiffsRead(struct spiffs_t *fs, uint32_t addr, uint32_t size,
-                          uint8_t* dst)
+static int32_t
+storage_read(
+    struct spiffs_t* fs,
+    uint32_t         addr,
+    uint32_t         size,
+    uint8_t*         dst)
 {
-    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t)     fs->user_data;
+    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) fs->user_data;
     OS_Error_t err;
     size_t read;
 
@@ -66,10 +61,14 @@ static int32_t spiffsRead(struct spiffs_t *fs, uint32_t addr, uint32_t size,
     return OS_SUCCESS;
 }
 
-static int32_t spiffsWrite(struct spiffs_t *fs, uint32_t addr, uint32_t size,
-                           uint8_t* src)
+static int32_t
+storage_write(
+    struct spiffs_t* fs,
+    uint32_t         addr,
+    uint32_t         size,
+    uint8_t*         src)
 {
-    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t)     fs->user_data;
+    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) fs->user_data;
     OS_Error_t err;
     size_t written;
 
@@ -96,7 +95,11 @@ static int32_t spiffsWrite(struct spiffs_t *fs, uint32_t addr, uint32_t size,
     return OS_SUCCESS;
 }
 
-static int32_t spiffsErase(struct spiffs_t *fs, uint32_t addr, uint32_t size)
+static int32_t
+storage_erase(
+    struct spiffs_t* fs,
+    uint32_t         addr,
+    uint32_t         size)
 {
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) fs->user_data;
     OS_Error_t err;
@@ -118,7 +121,6 @@ static int32_t spiffsErase(struct spiffs_t *fs, uint32_t addr, uint32_t size)
     return OS_SUCCESS;
 }
 
-
 // Public Functions ------------------------------------------------------------
 
 OS_Error_t
@@ -135,33 +137,33 @@ SpifFs_init(
     }
 
     // We need to ensure that page size is smaller than block size
-    pageSz  = cfg->format->spifFs.logPageSize;
-    blockSz = cfg->format->spifFs.logBlockSize;
+    pageSz  = cfg->format->spifFs.logicalPageSize;
+    blockSz = cfg->format->spifFs.logicalBlockSize;
     if (pageSz >= blockSz)
     {
+        Debug_LOG_ERROR("Block size (%i bytes) is smaller than page size "
+                        "(%i bytes)", blockSz, pageSz);
         return OS_ERROR_INVALID_PARAMETER;
     }
 
+    self->fs.spifFs.cfg.phys_addr        = SPIFFS_DEFAULT_PHYS_ADDR;
     self->fs.spifFs.cfg.phys_size        = cfg->size;
-    self->fs.spifFs.cfg.phys_addr        = cfg->format->spifFs.physAddr;
-    self->fs.spifFs.cfg.phys_erase_block = cfg->format->spifFs.physEraseBlock;
+    self->fs.spifFs.cfg.phys_erase_block = cfg->format->spifFs.eraseBlockSize;
     self->fs.spifFs.cfg.log_block_size   = blockSz;
     self->fs.spifFs.cfg.log_page_size    = pageSz;
-    self->fs.spifFs.cfg.hal_read_f       = spiffsRead;
-    self->fs.spifFs.cfg.hal_write_f      = spiffsWrite;
-    self->fs.spifFs.cfg.hal_erase_f      = spiffsErase;
+    self->fs.spifFs.cfg.hal_read_f       = storage_read;
+    self->fs.spifFs.cfg.hal_write_f      = storage_write;
+    self->fs.spifFs.cfg.hal_erase_f      = storage_erase;
 
     // These size calculations are taken from SPIFFS test code
     self->fs.spifFs.cacheSize = (cfg->format->spifFs.cachePages * (sizeof(
                                      spiffs_cache_page) + pageSz)) + sizeof(spiffs_cache);
 
-    if ((self->fs.spifFs.spiffs_cache_buf =
-             malloc(self->fs.spifFs.cacheSize)) == NULL)
+    if ((self->fs.spifFs.cacheBuf = malloc(self->fs.spifFs.cacheSize)) == NULL)
     {
         return OS_ERROR_INSUFFICIENT_SPACE;
     }
-    if ((self->fs.spifFs.spiffs_work_buf =
-             malloc(pageSz * 2)) == NULL)
+    if ((self->fs.spifFs.workBuf = malloc(pageSz * 2)) == NULL)
     {
         err = OS_ERROR_INSUFFICIENT_SPACE;
         goto err0;
@@ -172,7 +174,7 @@ SpifFs_init(
     return OS_SUCCESS;
 
 err0:
-    free(self->fs.spifFs.spiffs_cache_buf);
+    free(self->fs.spifFs.cacheBuf);
     return err;
 }
 
@@ -180,8 +182,8 @@ OS_Error_t
 SpifFs_free(
     OS_FileSystem_Handle_t self)
 {
-    free(self->fs.spifFs.spiffs_cache_buf);
-    free(self->fs.spifFs.spiffs_work_buf);
+    free(self->fs.spifFs.cacheBuf);
+    free(self->fs.spifFs.workBuf);
 
     return OS_SUCCESS;
 }
@@ -190,17 +192,16 @@ OS_Error_t
 SpifFs_format(
     OS_FileSystem_Handle_t self)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
+    spiffs* fs = &self->fs.spifFs.fs;
     spiffs_config* cfg = &self->fs.spifFs.cfg;
     int rc;
 
     // SPIFFS_format needs to be called with an initalized spiffs structure,
     // the initialization of which happens in SPIFFS_mount.
-
-    rc = SPIFFS_mount(fs, cfg, self->fs.spifFs.spiffs_work_buf,
-                      self->fs.spifFs.spiffs_fds,
-                      sizeof(self->fs.spifFs.spiffs_fds),
-                      self->fs.spifFs.spiffs_cache_buf,
+    rc = SPIFFS_mount(fs, cfg, self->fs.spifFs.workBuf,
+                      self->fs.spifFs.fds,
+                      sizeof(self->fs.spifFs.fds),
+                      self->fs.spifFs.cacheBuf,
                       self->fs.spifFs.cacheSize, 0);
 
     if (rc == SPIFFS_OK)
@@ -220,14 +221,14 @@ OS_Error_t
 SpifFs_mount(
     OS_FileSystem_Handle_t self)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
+    spiffs* fs = &self->fs.spifFs.fs;
     spiffs_config* cfg = &self->fs.spifFs.cfg;
     int rc;
 
-    rc = SPIFFS_mount(fs, cfg, self->fs.spifFs.spiffs_work_buf,
-                      self->fs.spifFs.spiffs_fds,
-                      sizeof(self->fs.spifFs.spiffs_fds),
-                      self->fs.spifFs.spiffs_cache_buf,
+    rc = SPIFFS_mount(fs, cfg, self->fs.spifFs.workBuf,
+                      self->fs.spifFs.fds,
+                      sizeof(self->fs.spifFs.fds),
+                      self->fs.spifFs.cacheBuf,
                       self->fs.spifFs.cacheSize, 0);
 
     return (rc == SPIFFS_OK) ? OS_SUCCESS : OS_ERROR_GENERIC;
@@ -237,11 +238,10 @@ OS_Error_t
 SpifFs_unmount(
     OS_FileSystem_Handle_t self)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
+    spiffs* fs = &self->fs.spifFs.fs;
 
     // SPIFFS_unmount does not return an error code.
     SPIFFS_unmount (fs);
 
     return OS_SUCCESS;
 }
-

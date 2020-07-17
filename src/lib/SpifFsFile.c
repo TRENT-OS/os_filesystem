@@ -169,8 +169,8 @@ SpifFsFile_delete(
     int rc;
 
     if ((rc = SPIFFS_remove(fs, name)) < 0) {
-      Debug_LOG_ERROR("SPIFFS_remove() failed with %i", rc);
-      return OS_ERROR_ABORTED;
+        Debug_LOG_ERROR("SPIFFS_remove() failed with %i", rc);
+        return OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
@@ -188,8 +188,8 @@ SpifFsFile_getSize(
     int rc;
 
     if ((rc = SPIFFS_stat(fs, name, &stat)) < 0) {
-      Debug_LOG_ERROR("SPIFFS_stat() failed with %i", rc);
-      return OS_ERROR_ABORTED;
+        Debug_LOG_ERROR("SPIFFS_stat() failed with %i", rc);
+        return OS_ERROR_ABORTED;
     }
 
     *sz = stat.size;
