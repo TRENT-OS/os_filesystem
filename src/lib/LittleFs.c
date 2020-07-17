@@ -177,6 +177,20 @@ LittleFs_init(
     }
     lfsCfg->block_count = cfg->size / cfg->format->littleFs.blockSize;
 
+    Debug_LOG_INFO("Using LITTLEFS ("
+                   "cache_size = %u, "
+                   "lookahead_size = %u, "
+                   "read_size = %u, "
+                   "prog_size = %u, "
+                   "block_size = %u, "
+                   "block_cycles = %u)",
+                   lfsCfg->cache_size,
+                   lfsCfg->lookahead_size,
+                   lfsCfg->read_size,
+                   lfsCfg->prog_size,
+                   lfsCfg->block_size,
+                   lfsCfg->block_cycles);
+
     // Set callbacks
     lfsCfg->read  = storage_read;
     lfsCfg->prog  = storage_prog;

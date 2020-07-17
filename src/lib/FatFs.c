@@ -174,6 +174,14 @@ FatFs_init(
         return OS_ERROR_INVALID_PARAMETER;
     }
 
+    Debug_LOG_INFO("Using FATFS ("
+                   "sector_count = %zu, "
+                   "sector_size = %u, "
+                   "block_size = %u)",
+                   cfg->size / cfg->format->fatFs.sectorSize,
+                   cfg->format->fatFs.sectorSize,
+                   cfg->format->fatFs.blockSize);
+
     // Assign callbacks
     self->fs.fatFs.dio.disk_initialize = storage_initialize;
     self->fs.fatFs.dio.disk_status = storage_status;

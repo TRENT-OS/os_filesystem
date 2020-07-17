@@ -151,9 +151,22 @@ SpifFs_init(
     self->fs.spifFs.cfg.phys_erase_block = cfg->format->spifFs.eraseBlockSize;
     self->fs.spifFs.cfg.log_block_size   = blockSz;
     self->fs.spifFs.cfg.log_page_size    = pageSz;
-    self->fs.spifFs.cfg.hal_read_f       = storage_read;
-    self->fs.spifFs.cfg.hal_write_f      = storage_write;
-    self->fs.spifFs.cfg.hal_erase_f      = storage_erase;
+
+    Debug_LOG_INFO("Using SPIFFS ("
+                   "phys_addr = %u, "
+                   "phys_size = %u, "
+                   "phys_erase_block = %u, "
+                   "log_block_size = %u, "
+                   "log_page_size = %u)",
+                   self->fs.spifFs.cfg.phys_addr,
+                   self->fs.spifFs.cfg.phys_size,
+                   self->fs.spifFs.cfg.phys_erase_block,
+                   self->fs.spifFs.cfg.log_block_size,
+                   self->fs.spifFs.cfg.log_page_size);
+
+    self->fs.spifFs.cfg.hal_read_f  = storage_read;
+    self->fs.spifFs.cfg.hal_write_f = storage_write;
+    self->fs.spifFs.cfg.hal_erase_f = storage_erase;
 
     // These size calculations are taken from SPIFFS test code
     self->fs.spifFs.cacheSize = (cfg->format->spifFs.cachePages * (sizeof(
