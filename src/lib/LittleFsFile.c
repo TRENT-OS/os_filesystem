@@ -187,9 +187,7 @@ LittleFsFile_getSize(
     lfs_file_t fh;
     int rc;
 
-    if ((rc = lfs_file_open(fs, &fh, name,
-                            OS_FileSystem_OpenMode_RDONLY |
-                            OS_FileSystem_OpenFlags_EXCLUSIVE)) < 0)
+    if ((rc = lfs_file_open(fs, &fh, name, LFS_O_RDONLY)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_open() failed with %i", rc);
         return OS_ERROR_ABORTED;
