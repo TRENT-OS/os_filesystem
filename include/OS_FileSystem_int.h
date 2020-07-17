@@ -15,6 +15,7 @@
 
 // For SpifFs
 #include "spiffs.h"
+#include "spiffs_nucleus.h"
 
 typedef struct
 {
@@ -85,13 +86,11 @@ struct OS_FileSystem
             spiffs fs;
             spiffs_config cfg;
             spiffs_file fh[MAX_FILE_HANDLES];
-            // 56 corresponds to sizeof(spiffs_fd) (spiffs_nucleus.h)
-            uint8_t spiffs_fds[MAX_FILE_HANDLES * 56];
-            // 256 corresponds to LOG_PAGE_SIZE
-            uint8_t spiffs_work_buf[256 * 2];
-            uint8_t spiffs_cache_buf[(256 + 32) * 4];
+            uint8_t spiffs_fds[MAX_FILE_HANDLES * sizeof(spiffs_fd)];
+            uint8_t* spiffs_work_buf;
+            uint8_t* spiffs_cache_buf;
+            size_t cacheSize;
         } spifFs;
     } fs;
     uint64_t usageMask;
 };
-
