@@ -33,15 +33,15 @@ static const OS_FileSystem_Format_t fatFs_defaultConfig =
 static DSTATUS
 storage_initialize(
     void* ctx,
-    BYTE pdrv)
+    BYTE  pdrv)
 {
     return RES_OK;;
 }
 
 static DSTATUS
-storage_status (
+storage_status(
     void* ctx,
-    BYTE pdrv)
+    BYTE  pdrv)
 {
     return RES_OK;
 }
@@ -49,10 +49,10 @@ storage_status (
 static DRESULT
 storage_read(
     void* ctx,
-    BYTE pdrv,
+    BYTE  pdrv,
     BYTE* buff,
     LBA_t sector,
-    UINT count)
+    UINT  count)
 {
     OS_Error_t err;
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) ctx;
@@ -85,12 +85,12 @@ storage_read(
 }
 
 static DRESULT
-storage_write (
-    void* ctx,
-    BYTE pdrv,
+storage_write(
+    void*       ctx,
+    BYTE        pdrv,
     const BYTE* buff,
-    LBA_t sector,
-    UINT count)
+    LBA_t       sector,
+    UINT        count)
 {
     OS_Error_t err;
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) ctx;
@@ -123,10 +123,10 @@ storage_write (
 }
 
 static DRESULT
-storage_ioctl (
+storage_ioctl(
     void* ctx,
-    BYTE pdrv,
-    BYTE cmd,
+    BYTE  pdrv,
+    BYTE  cmd,
     void* buff)
 {
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) ctx;
