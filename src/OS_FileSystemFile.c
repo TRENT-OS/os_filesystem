@@ -26,7 +26,8 @@ fileHandle_findFree(
     m = self->usageMask;
     for (i = 0; i < MAX_FILE_HANDLES; i++)
     {
-        if ((m & 1ULL) == 0) {
+        if ((m & 1ULL) == 0)
+        {
             return i;
         }
         m >>= 1;
@@ -178,7 +179,7 @@ OS_FileSystemFile_delete(
         return OS_ERROR_INVALID_PARAMETER;
     }
 
-    return self->fileOps->delete(self, name);
+    return self->fileOps->delete (self, name);
 }
 
 OS_Error_t
