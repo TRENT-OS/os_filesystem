@@ -148,11 +148,11 @@
 #define SPIFFS_PACKED __attribute__((packed))
 #elif defined(__ICCARM__) || defined(__CC_ARM)
     /* For IAR ARM and Keil MDK-ARM compilers */
-#define SPIFFS_PACKED 
+#define SPIFFS_PACKED
 
 #else
     /* Unknown compiler */
-#define SPIFFS_PACKED 
+#define SPIFFS_PACKED
 #endif
 
 
@@ -301,9 +301,14 @@
 #define SPIFFS_CHECK_CFG(fs) \
   ((fs)->config_magic == SPIFFS_CONFIG_MAGIC)
 
+
+#include "LibDebug/Debug.h"
 #define SPIFFS_CHECK_RES(res) \
   do { \
-    if ((res) < SPIFFS_OK) return (res); \
+    if ((res) < SPIFFS_OK) { \
+        Debug_LOG_ERROR("error %d", res); \
+        return (res); \
+    } \
   } while (0);
 
 #define SPIFFS_API_CHECK_MOUNT(fs) \
