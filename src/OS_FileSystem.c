@@ -172,42 +172,76 @@ OS_Error_t
 OS_FileSystem_free(
     OS_FileSystem_Handle_t self)
 {
-    OS_Error_t err;
-
     if (NULL == self)
     {
         return OS_ERROR_INVALID_PARAMETER;
     }
 
-    err = self->fsOps->free(self);
-    free(self);
+    OS_Error_t ret = self->fsOps->free(self);
+    if (OS_SUCCESS != ret)
+    {
+        Debug_LOG_ERROR("free() failed, code %d", ret);
+        free(self);
+        return ret;
+    }
 
-    return err;
+    free(self);
+    return OS_SUCCESS;
 }
 
 OS_Error_t
 OS_FileSystem_format(
     OS_FileSystem_Handle_t self)
 {
-    return (NULL == self) ?
-           OS_ERROR_INVALID_PARAMETER :
-           self->fsOps->format(self);
+    if (NULL == self)
+    {
+        return OS_ERROR_INVALID_PARAMETER;
+    }
+
+    OS_Error_t ret = self->fsOps->format(self);
+    if (OS_SUCCESS != ret)
+    {
+        Debug_LOG_ERROR("format() failed, code %d", ret);
+        return ret;
+    }
+
+    return OS_SUCCESS;
 }
 
 OS_Error_t
 OS_FileSystem_mount(
     OS_FileSystem_Handle_t self)
 {
-    return (NULL == self) ?
-           OS_ERROR_INVALID_PARAMETER :
-           self->fsOps->mount(self);
+    if (NULL == self)
+    {
+        return OS_ERROR_INVALID_PARAMETER;
+    }
+
+    OS_Error_t ret = self->fsOps->mount(self);
+    if (OS_SUCCESS != ret)
+    {
+        Debug_LOG_ERROR("mount() failed, code %d", ret);
+        return ret;
+    }
+
+    return OS_SUCCESS;
 }
 
 OS_Error_t
 OS_FileSystem_unmount(
     OS_FileSystem_Handle_t self)
 {
-    return (NULL == self) ?
-           OS_ERROR_INVALID_PARAMETER :
-           self->fsOps->unmount(self);
+    if (NULL == self)
+    {
+        return OS_ERROR_INVALID_PARAMETER;
+    }
+
+    OS_Error_t ret = self->fsOps->unmount(self);
+    if (OS_SUCCESS != ret)
+    {
+        Debug_LOG_ERROR("unmount() failed, code %d", ret);
+        return ret;
+    }
+
+    return OS_SUCCESS;
 }
