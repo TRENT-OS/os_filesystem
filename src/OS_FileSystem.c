@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 // LittleFs callbacks
 static const OS_FileSystem_FsOps_t littleFs_ops =
@@ -90,7 +91,7 @@ OS_FileSystem_init(
 {
     OS_Error_t err;
     OS_FileSystem_Handle_t fs;
-    size_t sz;
+    off_t sz;
 
     if (NULL == self || NULL == cfg)
     {
@@ -127,15 +128,20 @@ OS_FileSystem_init(
     // underlying storage. If it is non-zero, we need to check if it would fit.
     if (OS_FileSystem_USE_STORAGE_MAX == fs->cfg.size)
     {
-        Debug_LOG_INFO("Maximizing file system according to size reported "
-                       "by the storage layer (%zu bytes)", sz);
+        Debug_LOG_INFO(
+            "Maximizing file system according to size reported by the storage "
+            "layer (%" PRIiMAX " bytes)",
+            sz);
+
         fs->cfg.size = sz;
     }
     else if (fs->cfg.size > sz)
     {
-        Debug_LOG_ERROR("Configured fileysten size (%zu bytes) exceeds "
-                        "the size of the underlying storage (%zu bytes)",
-                        fs->cfg.size, sz);
+        Debug_LOG_ERROR(
+            "Configured fileysten size (%" PRIiMAX " bytes) exceeds the size of "
+            "the underlying storage (%" PRIiMAX " bytes)",
+            fs->cfg.size, sz);
+
         err = OS_ERROR_INSUFFICIENT_SPACE;
         goto err0;
     }

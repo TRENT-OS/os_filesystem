@@ -14,6 +14,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 // Private Functions -----------------------------------------------------------
 
@@ -88,7 +89,7 @@ OS_Error_t
 LittleFsFile_read(
     OS_FileSystem_Handle_t     self,
     OS_FileSystemFile_Handle_t hFile,
-    const size_t               offset,
+    const off_t                offset,
     const size_t               len,
     void*                      buffer)
 {
@@ -104,8 +105,10 @@ LittleFsFile_read(
     }
     if (off != offset)
     {
-        Debug_LOG_ERROR("lfs_file_seek() jumped to offset %i instead of offset %zu",
-                        off, offset);
+        Debug_LOG_ERROR(
+            "lfs_file_seek() jumped to offset %i instead of offset %" PRIiMAX,
+            off,
+            offset);
     }
 
     if ((sz = lfs_file_read(fs, fh, buffer, len)) < 0)
@@ -126,7 +129,7 @@ OS_Error_t
 LittleFsFile_write(
     OS_FileSystem_Handle_t     self,
     OS_FileSystemFile_Handle_t hFile,
-    const size_t               offset,
+    const off_t                offset,
     const size_t               len,
     const void*                buffer)
 {
@@ -142,8 +145,10 @@ LittleFsFile_write(
     }
     if (off != offset)
     {
-        Debug_LOG_ERROR("lfs_file_seek() jumped to offset %i instead of offset %zu",
-                        off, offset);
+        Debug_LOG_ERROR(
+            "lfs_file_seek() jumped to offset %i instead of offset %" PRIiMAX,
+            off,
+            offset);
     }
 
     if ((sz = lfs_file_write(fs, fh, buffer, len)) < 0)
@@ -181,7 +186,7 @@ OS_Error_t
 LittleFsFile_getSize(
     OS_FileSystem_Handle_t self,
     const char*            name,
-    size_t*                sz)
+    off_t*                 sz)
 {
     lfs_t* fs = &self->fs.littleFs.fs;
     lfs_file_t fh;

@@ -23,7 +23,7 @@ OS_Error_t
 FatFsFile_read(
     OS_FileSystem_Handle_t     self,
     OS_FileSystemFile_Handle_t hFile,
-    const size_t               offset,
+    const off_t                offset,
     const size_t               len,
     void*                      buffer);
 
@@ -31,7 +31,7 @@ OS_Error_t
 FatFsFile_write(
     OS_FileSystem_Handle_t     self,
     OS_FileSystemFile_Handle_t hFile,
-    const size_t               offset,
+    const off_t                offset,
     const size_t               len,
     const void*                buffer);
 
@@ -44,4 +44,4 @@ OS_Error_t
 FatFsFile_getSize(
     OS_FileSystem_Handle_t self,
     const char*            name,
-    size_t*                sz);
+    off_t*                 sz);

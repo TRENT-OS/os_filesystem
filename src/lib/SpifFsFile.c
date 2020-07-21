@@ -10,6 +10,8 @@
 #endif
 #include "LibDebug/Debug.h"
 
+#include <inttypes.h>
+
 // Private Functions -----------------------------------------------------------
 
 // Public Functions ------------------------------------------------------------
@@ -87,7 +89,7 @@ OS_Error_t
 SpifFsFile_read(
     OS_FileSystem_Handle_t     self,
     OS_FileSystemFile_Handle_t hFile,
-    const size_t               offset,
+    const off_t                offset,
     const size_t               len,
     void*                      buffer)
 {
@@ -104,8 +106,9 @@ SpifFsFile_read(
     }
     if (off != offset)
     {
-        Debug_LOG_ERROR("SPIFFS_lseek() jumped to offset %zu instead of offset %zu",
-                        off, offset);
+        Debug_LOG_ERROR(
+            "SPIFFS_lseek() jumped to offset %zu instead of offset %" PRIiMAX,
+            off, offset);
     }
     if ((sz = SPIFFS_read(fs, *file, buffer, len)) < 0)
     {
@@ -125,7 +128,7 @@ OS_Error_t
 SpifFsFile_write(
     OS_FileSystem_Handle_t     self,
     OS_FileSystemFile_Handle_t hFile,
-    const size_t               offset,
+    const off_t                offset,
     const size_t               len,
     const void*                buffer)
 {
@@ -142,8 +145,9 @@ SpifFsFile_write(
     }
     if (off != offset)
     {
-        Debug_LOG_ERROR("SPIFFS_lseek() jumped to offset %zu instead of offset %zu",
-                        off, offset);
+        Debug_LOG_ERROR(
+            "SPIFFS_lseek() jumped to offset %zu instead of offset %" PRIiMAX,
+            off, offset);
     }
 
     if ((sz = SPIFFS_write(fs, *file, (void*) buffer, len)) < 0)
@@ -181,7 +185,7 @@ OS_Error_t
 SpifFsFile_getSize(
     OS_FileSystem_Handle_t self,
     const char*            name,
-    size_t*                sz)
+    off_t*                 sz)
 {
     spiffs* fs = &self->fs.spifFs.fs;
     spiffs_stat stat;

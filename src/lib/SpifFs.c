@@ -11,6 +11,7 @@
 #include "LibDebug/Debug.h"
 
 #include <string.h>
+#include <inttypes.h>
 
 #include "spiffs.h"
 #include "spiffs_config.h"
@@ -105,7 +106,7 @@ storage_erase(
 {
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) fs->user_data;
     OS_Error_t err;
-    size_t erased;
+    off_t erased;
 
     if ((err = self->cfg.storage.erase(addr, size, &erased)) != OS_SUCCESS)
     {
@@ -115,8 +116,11 @@ storage_erase(
 
     if (erased != size)
     {
-        Debug_LOG_ERROR("erase() requested to erase %u bytes but erased %zu bytes",
-                        size, erased);
+        Debug_LOG_ERROR(
+            "erase() requested to erase %u bytes but erased %" PRIiMAX " bytes",
+            size,
+            erased);
+
         return OS_ERROR_ABORTED;
     }
 

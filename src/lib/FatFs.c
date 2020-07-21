@@ -14,6 +14,7 @@
 #include "LibDebug/Debug.h"
 
 #include <string.h>
+#include <inttypes.h>
 
 // Default configuration for FatFs
 #define FATFS_DEFAULT_N_FAT 1
@@ -57,7 +58,8 @@ storage_read(
     OS_Error_t err;
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) ctx;
     size_t sectorSize = self->cfg.format->fatFs.sectorSize;
-    size_t read, addr, size;
+    off_t  addr;
+    size_t read, size;
 
     size = sectorSize * count;
     if (size > OS_Dataport_getSize(self->cfg.storage.dataport))
@@ -95,7 +97,8 @@ storage_write(
     OS_Error_t err;
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) ctx;
     size_t sectorSize = self->cfg.format->fatFs.sectorSize;
-    size_t written, addr, size;
+    off_t addr;
+    size_t written, size;
 
     size = sectorSize * count;
     if (size > OS_Dataport_getSize(self->cfg.storage.dataport))
@@ -168,14 +171,14 @@ FatFs_init(
     // Check we are aligned with the sector size
     if (cfg->size % cfg->format->fatFs.sectorSize)
     {
-        Debug_LOG_ERROR("Storage size of %zu bytes is not aligned with "
-                        "sector size of %u bytes",
+        Debug_LOG_ERROR("Storage size of %" PRIiMAX " bytes is not aligned "
+                        "with sector size of %i bytes",
                         cfg->size, cfg->format->fatFs.blockSize);
         return OS_ERROR_INVALID_PARAMETER;
     }
 
     Debug_LOG_INFO("Using FATFS ("
-                   "sector_count = %zu, "
+                   "sector_count = %" PRIiMAX ", "
                    "sector_size = %u, "
                    "block_size = %u)",
                    cfg->size / cfg->format->fatFs.sectorSize,

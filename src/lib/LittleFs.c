@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 // Default configuration for LittleFS
 #define LITTLEFS_DEFAULT_CACHE_SIZE 16
@@ -42,7 +43,8 @@ storage_read(
 {
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) c->context;
     OS_Error_t err;
-    size_t read, addr;
+    off_t addr;
+    size_t read;
 
     if (size > OS_Dataport_getSize(self->cfg.storage.dataport))
     {
@@ -78,7 +80,8 @@ storage_prog(
 {
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) c->context;
     OS_Error_t err;
-    size_t written, addr;
+    off_t addr;
+    size_t written;
 
     if (size > OS_Dataport_getSize(self->cfg.storage.dataport))
     {
@@ -111,7 +114,8 @@ storage_erase(
 {
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) c->context;
     OS_Error_t err;
-    size_t erased, addr, size;
+    off_t addr;
+    off_t erased, size;
 
     addr = c->block_size * block;
     size = c->block_size;
@@ -123,8 +127,12 @@ storage_erase(
 
     if (erased != size)
     {
-        Debug_LOG_ERROR("erase() requested to erase %zu bytes but erased %zu bytes",
-                        size, erased);
+        Debug_LOG_ERROR(
+            "erase() requested to erase %" PRIiMAX " bytes "
+            "but erased %" PRIiMAX " bytes",
+            size,
+            erased);
+
         return OS_ERROR_ABORTED;
     }
 
@@ -170,8 +178,8 @@ LittleFs_init(
     // make sure it is aligned with the block size
     if (cfg->size % cfg->format->littleFs.blockSize)
     {
-        Debug_LOG_ERROR("Storage size of %zu bytes is not aligned with "
-                        "block size of %d bytes",
+        Debug_LOG_ERROR("Storage size of %" PRIiMAX " bytes is not aligned "
+                        "with block size of %d bytes",
                         cfg->size, cfg->format->littleFs.blockSize);
         return OS_ERROR_INVALID_PARAMETER;
     }
