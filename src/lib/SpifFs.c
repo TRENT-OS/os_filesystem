@@ -215,7 +215,7 @@ SpifFs_format(
                       self->fs.spifFs.fds,
                       sizeof(self->fs.spifFs.fds),
                       self->fs.spifFs.cacheBuf,
-                      self->fs.spifFs.cacheSize, 0);
+                      self->fs.spifFs.cacheSize, NULL);
 
     if (rc == SPIFFS_OK)
     {
@@ -242,7 +242,7 @@ SpifFs_mount(
                       self->fs.spifFs.fds,
                       sizeof(self->fs.spifFs.fds),
                       self->fs.spifFs.cacheBuf,
-                      self->fs.spifFs.cacheSize, 0);
+                      self->fs.spifFs.cacheSize, NULL);
 
     return (rc == SPIFFS_OK) ? OS_SUCCESS : OS_ERROR_GENERIC;
 }
