@@ -109,7 +109,7 @@ SpifFsFile_read(
     }
     if ((sz = SPIFFS_read(fs, *file, buffer, len)) < 0)
     {
-        Debug_LOG_ERROR("SPIFFS_read() failed with %zu", sz);
+        Debug_LOG_ERROR("SPIFFS_read() failed with %zi", sz);
         return OS_ERROR_ABORTED;
     }
     if (sz != len)
@@ -148,7 +148,7 @@ SpifFsFile_write(
 
     if ((sz = SPIFFS_write(fs, *file, (void*) buffer, len)) < 0)
     {
-        Debug_LOG_ERROR("SPIFFS_write() failed with %zu", sz);
+        Debug_LOG_ERROR("SPIFFS_write() failed with %zi", sz);
         return OS_ERROR_ABORTED;
     }
     if (sz != len)
