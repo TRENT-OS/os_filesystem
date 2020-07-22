@@ -219,7 +219,7 @@ SpifFs_format(
 
     if (rc == SPIFFS_OK)
     {
-        SPIFFS_unmount (fs);
+        SPIFFS_unmount(fs);
     }
 
     if ((rc = SPIFFS_format(fs)) < 0)
@@ -254,7 +254,7 @@ SpifFs_unmount(
     spiffs* fs = &self->fs.spifFs.fs;
 
     // SPIFFS_unmount does not return an error code.
-    SPIFFS_unmount (fs);
+    SPIFFS_unmount(fs);
 
     return OS_SUCCESS;
 }

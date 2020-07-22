@@ -22,8 +22,8 @@ SpifFsFile_open(
     const OS_FileSystem_OpenMode_t  mode,
     const OS_FileSystem_OpenFlags_t flags)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
-    spiffs_file*  file = &self->fs.spifFs.fh[hFile];
+    spiffs* fs = &self->fs.spifFs.fs;
+    spiffs_file* file = &self->fs.spifFs.fh[hFile];
 
     uint32_t oflags;
 
@@ -69,8 +69,8 @@ SpifFsFile_close(
     OS_FileSystem_Handle_t     self,
     OS_FileSystemFile_Handle_t hFile)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
-    spiffs_file*  file = &self->fs.spifFs.fh[hFile];
+    spiffs* fs = &self->fs.spifFs.fs;
+    spiffs_file* file = &self->fs.spifFs.fh[hFile];
 
     int rc;
 
@@ -91,8 +91,8 @@ SpifFsFile_read(
     const size_t               len,
     void*                      buffer)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
-    spiffs_file*  file = &self->fs.spifFs.fh[hFile];
+    spiffs* fs = &self->fs.spifFs.fs;
+    spiffs_file* file = &self->fs.spifFs.fh[hFile];
 
     ssize_t sz;
     size_t off;
@@ -129,8 +129,8 @@ SpifFsFile_write(
     const size_t               len,
     const void*                buffer)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
-    spiffs_file*  file = &self->fs.spifFs.fh[hFile];
+    spiffs* fs = &self->fs.spifFs.fs;
+    spiffs_file* file = &self->fs.spifFs.fh[hFile];
 
     ssize_t sz;
     size_t off;
@@ -165,7 +165,7 @@ SpifFsFile_delete(
     OS_FileSystem_Handle_t self,
     const char*            name)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
+    spiffs* fs = &self->fs.spifFs.fs;
     int rc;
 
     if ((rc = SPIFFS_remove(fs, name)) < 0)
@@ -183,7 +183,7 @@ SpifFsFile_getSize(
     const char*            name,
     size_t*                sz)
 {
-    spiffs* fs         = &self->fs.spifFs.fs;
+    spiffs* fs = &self->fs.spifFs.fs;
     spiffs_stat stat;
 
     int rc;
