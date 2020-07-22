@@ -6,9 +6,6 @@
 
 #include "OS_FileSystem.h"
 
-// For LittleFS
-#include "lfs.h"
-
 // For FatFs
 #include "ff.h"
 #include "diskio.h"
@@ -67,12 +64,6 @@ struct OS_FileSystem
     OS_FileSystem_Config_t cfg;
     union
     {
-        struct
-        {
-            lfs_t fs;
-            struct lfs_config cfg;
-            lfs_file_t fh[MAX_FILE_HANDLES];
-        } littleFs;
         struct
         {
             DIO dio;
