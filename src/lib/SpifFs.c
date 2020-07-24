@@ -53,6 +53,8 @@ storage_read(
 
     if (read != size)
     {
+        Debug_LOG_ERROR("read() requested to read %u bytes but got %zu bytes",
+                        size, read);
         return OS_ERROR_ABORTED;
     }
 
