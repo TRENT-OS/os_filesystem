@@ -123,9 +123,9 @@ OS_FileSystem_init(
 
     fs->cfg = *cfg;
 
-    // Check if user passed as size; if it zero, we just max out the underlying
-    // storage. If it is non-zero, we need to check if it would fit.
-    if (OS_FileSystem_STORAGE_MAX == fs->cfg.size)
+    // Check if a user passed a size; if it is zero, we just max out the
+    // underlying storage. If it is non-zero, we need to check if it would fit.
+    if (OS_FileSystem_USE_STORAGE_MAX == fs->cfg.size)
     {
         Debug_LOG_INFO("Maximizing file system according to size reported "
                        "by the storage layer (%zu bytes)", sz);
