@@ -81,6 +81,30 @@ static const OS_FileSystem_FileOps_t spifFsFile_ops =
 };
 
 // Private Functions -----------------------------------------------------------
+static inline bool
+isInitParametersOk(
+    OS_FileSystem_Handle_t*       self,
+    const OS_FileSystem_Config_t* cfg)
+{
+    if (NULL == self || NULL == cfg)
+    {
+        return false;
+    }
+    if (OS_Dataport_isUnset(cfg->storage.dataport))
+    {
+        return false;
+    }
+    if (NULL == cfg->storage.erase ||
+        NULL == cfg->storage.read ||
+        NULL == cfg->storage.write ||
+        NULL == cfg->storage.getState ||
+        NULL == cfg->storage.getSize)
+    {
+        return false;
+    }
+    return true;
+}
+
 
 // Public Functions ------------------------------------------------------------
 
@@ -93,19 +117,7 @@ OS_FileSystem_init(
     OS_FileSystem_Handle_t fs;
     off_t sz;
 
-    if (NULL == self || NULL == cfg)
-    {
-        return OS_ERROR_INVALID_PARAMETER;
-    }
-    if (OS_Dataport_isUnset(cfg->storage.dataport))
-    {
-        return OS_ERROR_INVALID_PARAMETER;
-    }
-    if (NULL == cfg->storage.erase ||
-        NULL == cfg->storage.read ||
-        NULL == cfg->storage.write ||
-        NULL == cfg->storage.getState ||
-        NULL == cfg->storage.getSize)
+    if (!isInitParametersOk(self, cfg))
     {
         return OS_ERROR_INVALID_PARAMETER;
     }
