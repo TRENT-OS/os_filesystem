@@ -231,9 +231,10 @@ SpifFs_format(
     if ((rc = SPIFFS_format(fs)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_format() failed with %d", rc);
+        return OS_ERROR_ABORTED;
     }
 
-    return (rc < 0) ? OS_ERROR_GENERIC : OS_SUCCESS;
+    return OS_SUCCESS;
 }
 
 OS_Error_t
@@ -244,13 +245,17 @@ SpifFs_mount(
     spiffs_config* cfg = &self->fs.spifFs.cfg;
     int rc;
 
-    rc = SPIFFS_mount(fs, cfg, self->fs.spifFs.workBuf,
-                      self->fs.spifFs.fds,
-                      sizeof(self->fs.spifFs.fds),
-                      self->fs.spifFs.cacheBuf,
-                      self->fs.spifFs.cacheSize, NULL);
+    if ((rc = SPIFFS_mount(fs, cfg, self->fs.spifFs.workBuf,
+                           self->fs.spifFs.fds,
+                           sizeof(self->fs.spifFs.fds),
+                           self->fs.spifFs.cacheBuf,
+                           self->fs.spifFs.cacheSize, NULL)) < 0)
+    {
+        Debug_LOG_ERROR("SPIFFS_mount() failed with %d", rc);
+        return OS_ERROR_ABORTED;
+    }
 
-    return (rc == SPIFFS_OK) ? OS_SUCCESS : OS_ERROR_GENERIC;
+    return OS_SUCCESS;
 }
 
 OS_Error_t

@@ -230,9 +230,10 @@ LittleFs_format(
     if ((rc = lfs_format(fs, cfg)) < 0)
     {
         Debug_LOG_ERROR("lfs_format() failed with %i", rc);
+        return OS_ERROR_ABORTED;
     }
 
-    return (rc < 0) ? OS_ERROR_ABORTED : OS_SUCCESS;
+    return OS_SUCCESS;
 }
 
 OS_Error_t
@@ -246,9 +247,10 @@ LittleFs_mount(
     if ((rc = lfs_mount(fs, cfg)) < 0)
     {
         Debug_LOG_ERROR("lfs_mount() failed with %i", rc);
+        return OS_ERROR_ABORTED;
     }
 
-    return (rc < 0) ? OS_ERROR_ABORTED : OS_SUCCESS;
+    return OS_SUCCESS;
 }
 
 OS_Error_t
@@ -261,7 +263,8 @@ LittleFs_unmount(
     if ((rc = lfs_unmount(fs)) < 0)
     {
         Debug_LOG_ERROR("lfs_unmount() failed with %i", rc);
+        return OS_ERROR_ABORTED;
     }
 
-    return (rc < 0) ? OS_ERROR_GENERIC : OS_SUCCESS;
+    return OS_SUCCESS;
 }
