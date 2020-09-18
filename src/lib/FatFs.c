@@ -268,7 +268,7 @@ FatFs_mount(
                       &self->fs.fatFs.fs, "", mountNow)) != FR_OK)
     {
         Debug_LOG_ERROR("f_mount() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return (rc == FR_NO_FILESYSTEM) ? OS_ERROR_NOT_FOUND : OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;

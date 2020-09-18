@@ -247,7 +247,7 @@ LittleFs_mount(
     if ((rc = lfs_mount(fs, cfg)) < 0)
     {
         Debug_LOG_ERROR("lfs_mount() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return (rc == LFS_ERR_CORRUPT) ? OS_ERROR_NOT_FOUND : OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
