@@ -49,6 +49,7 @@ storage_read(
 
     if ((err = self->cfg.storage.read(addr, size, &read)) != OS_SUCCESS)
     {
+        Debug_LOG_ERROR("read() failed with %d", err);
         return err;
     }
 
