@@ -70,7 +70,7 @@ storage_read(
     addr = sectorSize * sector;
     if ((err = self->cfg.storage.read(addr, size, &read)) != OS_SUCCESS)
     {
-        Debug_LOG_ERROR("read() failed with %i", err);
+        Debug_LOG_ERROR("read() failed with %d", err);
         return RES_ERROR;
     }
 
@@ -111,7 +111,7 @@ storage_write(
     addr = sectorSize * sector;
     if ((err = self->cfg.storage.write(addr, size, &written)) != OS_SUCCESS)
     {
-        Debug_LOG_ERROR("write() failed with %i", err);
+        Debug_LOG_ERROR("write() failed with %d", err);
         return RES_ERROR;
     }
 
@@ -248,7 +248,7 @@ FatFs_format(
                      self->fs.fatFs.buffer,
                      sizeof(self->fs.fatFs.buffer))) != FR_OK)
     {
-        Debug_LOG_ERROR("f_mkfs() failed with %i", rc);
+        Debug_LOG_ERROR("f_mkfs() failed with %d", rc);
         return OS_ERROR_ABORTED;
     }
 
@@ -267,7 +267,7 @@ FatFs_mount(
     if ((rc = f_mount(&self->fs.fatFs.fctx,
                       &self->fs.fatFs.fs, "", mountNow)) != FR_OK)
     {
-        Debug_LOG_ERROR("f_mount() failed with %i", rc);
+        Debug_LOG_ERROR("f_mount() failed with %d", rc);
         return OS_ERROR_ABORTED;
     }
 
@@ -282,7 +282,7 @@ FatFs_unmount(
 
     if ((rc = f_mount(&self->fs.fatFs.fctx, NULL, "", 0)) != FR_OK)
     {
-        Debug_LOG_ERROR("f_mount() failed with %i", rc);
+        Debug_LOG_ERROR("f_mount() failed with %d", rc);
         return OS_ERROR_ABORTED;
     }
 

@@ -54,7 +54,7 @@ storage_read(
     addr = off + (c->block_size * block);
     if ((err = self->cfg.storage.read(addr, size, &read)) != OS_SUCCESS)
     {
-        Debug_LOG_ERROR("read() failed with %i", err);
+        Debug_LOG_ERROR("read() failed with %d", err);
         return err;
     }
 
@@ -93,7 +93,7 @@ storage_prog(
     addr = off + (c->block_size * block);
     if ((err = self->cfg.storage.write(addr, size, &written)) != OS_SUCCESS)
     {
-        Debug_LOG_ERROR("write() failed with %i", err);
+        Debug_LOG_ERROR("write() failed with %d", err);
         return err;
     }
 
@@ -121,7 +121,7 @@ storage_erase(
     size = c->block_size;
     if ((err = self->cfg.storage.erase(addr, size, &erased)) != OS_SUCCESS)
     {
-        Debug_LOG_ERROR("erase() failed with %i", err);
+        Debug_LOG_ERROR("erase() failed with %d", err);
         return err;
     }
 
@@ -229,7 +229,7 @@ LittleFs_format(
 
     if ((rc = lfs_format(fs, cfg)) < 0)
     {
-        Debug_LOG_ERROR("lfs_format() failed with %i", rc);
+        Debug_LOG_ERROR("lfs_format() failed with %d", rc);
         return OS_ERROR_ABORTED;
     }
 
@@ -246,7 +246,7 @@ LittleFs_mount(
 
     if ((rc = lfs_mount(fs, cfg)) < 0)
     {
-        Debug_LOG_ERROR("lfs_mount() failed with %i", rc);
+        Debug_LOG_ERROR("lfs_mount() failed with %d", rc);
         return OS_ERROR_ABORTED;
     }
 
@@ -262,7 +262,7 @@ LittleFs_unmount(
 
     if ((rc = lfs_unmount(fs)) < 0)
     {
-        Debug_LOG_ERROR("lfs_unmount() failed with %i", rc);
+        Debug_LOG_ERROR("lfs_unmount() failed with %d", rc);
         return OS_ERROR_ABORTED;
     }
 
