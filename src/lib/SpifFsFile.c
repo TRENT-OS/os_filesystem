@@ -26,7 +26,6 @@ SpifFsFile_open(
 {
     spiffs* fs = &self->fs.spifFs.fs;
     spiffs_file* file = &self->fs.spifFs.fh[hFile];
-
     uint32_t oflags;
 
     switch (mode)
@@ -73,7 +72,6 @@ SpifFsFile_close(
 {
     spiffs* fs = &self->fs.spifFs.fs;
     spiffs_file* file = &self->fs.spifFs.fh[hFile];
-
     int rc;
 
     if ((rc = SPIFFS_close(fs, *file)) < 0)
@@ -189,7 +187,6 @@ SpifFsFile_getSize(
 {
     spiffs* fs = &self->fs.spifFs.fs;
     spiffs_stat stat;
-
     int rc;
 
     if ((rc = SPIFFS_stat(fs, name, &stat)) < 0)
