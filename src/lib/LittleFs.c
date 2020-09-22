@@ -19,7 +19,7 @@
 #include <inttypes.h>
 
 // Default configuration for LittleFS
-#define LITTLEFS_DEFAULT_CACHE_SIZE 16
+#define LITTLEFS_DEFAULT_CACHE_SIZE 4096
 #define LITTLEFS_DEFAULT_LOOKAHEAD_SIZE 16
 static const OS_FileSystem_Format_t littleFs_defaultConfig =
 {
