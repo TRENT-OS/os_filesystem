@@ -18,7 +18,7 @@
 
 // Default configuration for FatFs
 #define FATFS_DEFAULT_N_FAT 1
-#define FATFS_DEFAULT_FMT FM_FAT
+#define FATFS_DEFAULT_FMT FM_ANY
 static const OS_FileSystem_Format_t fatFs_defaultConfig =
 {
     .fatFs = {
