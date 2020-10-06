@@ -260,7 +260,7 @@ FatFs_format(
                      sizeof(self->fs.fatFs.buffer))) != FR_OK)
     {
         Debug_LOG_ERROR("f_mkfs() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -279,7 +279,12 @@ FatFs_mount(
                       &self->fs.fatFs.fs, "", mountNow)) != FR_OK)
     {
         Debug_LOG_ERROR("f_mount() failed with %d", rc);
-        return (rc == FR_NO_FILESYSTEM) ? OS_ERROR_NOT_FOUND : OS_ERROR_GENERIC;
+        // If we have an ioError, return that; otherwise check if FatFS detected
+        // that there is no FatFS on the storage and return NOT_FOUND; otherwise
+        // return GENERIC.
+        return (self->ioError != OS_SUCCESS)
+               ? self->ioError : (rc == FR_NO_FILESYSTEM)
+               ? OS_ERROR_NOT_FOUND : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -294,7 +299,7 @@ FatFs_unmount(
     if ((rc = f_mount(&self->fs.fatFs.fctx, NULL, "", 0)) != FR_OK)
     {
         Debug_LOG_ERROR("f_mount() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;

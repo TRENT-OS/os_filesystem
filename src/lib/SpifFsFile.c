@@ -59,7 +59,7 @@ SpifFsFile_open(
     if ((*file = SPIFFS_open(fs, name, oflags, 0)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_open() failed with %d", *file);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -77,7 +77,7 @@ SpifFsFile_close(
     if ((rc = SPIFFS_close(fs, *file)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_close() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -100,25 +100,25 @@ SpifFsFile_read(
     if ((off = SPIFFS_lseek(fs, *file, offset, SPIFFS_SEEK_SET)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_lseek() failed with %zu", off);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
     if (off != offset)
     {
         Debug_LOG_ERROR(
             "SPIFFS_lseek() jumped to offset %zu instead of offset %" PRIiMAX,
             off, offset);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
     if ((sz = SPIFFS_read(fs, *file, buffer, len)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_read() failed with %zi", sz);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
     if (sz != len)
     {
         Debug_LOG_ERROR("SPIFFS_read() read %zu bytes instead of %zu bytes",
                         sz, len);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
@@ -141,26 +141,26 @@ SpifFsFile_write(
     if ((off = SPIFFS_lseek(fs, *file, offset, SPIFFS_SEEK_SET)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_lseek() failed with %zu", off);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
     if (off != offset)
     {
         Debug_LOG_ERROR(
             "SPIFFS_lseek() jumped to offset %zu instead of offset %" PRIiMAX,
             off, offset);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
 
     if ((sz = SPIFFS_write(fs, *file, (void*) buffer, len)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_write() failed with %zi", sz);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
     if (sz != len)
     {
         Debug_LOG_ERROR("SPIFFS_write() wrote %zu bytes instead of %zu bytes",
                         sz, len);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
@@ -177,7 +177,7 @@ SpifFsFile_delete(
     if ((rc = SPIFFS_remove(fs, name)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_remove() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -196,7 +196,7 @@ SpifFsFile_getSize(
     if ((rc = SPIFFS_stat(fs, name, &stat)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_stat() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     *sz = stat.size;

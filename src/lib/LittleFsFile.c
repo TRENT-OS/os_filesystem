@@ -61,7 +61,7 @@ LittleFsFile_open(
     if ((rc = lfs_file_open(fs, fh, name, oflags)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_open() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -79,7 +79,7 @@ LittleFsFile_close(
     if ((rc = lfs_file_close(fs, fh)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_close() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -101,7 +101,7 @@ LittleFsFile_read(
     if ((off = lfs_file_seek(fs, fh, offset, LFS_SEEK_SET)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_seek() failed with %d", off);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
     if (off != offset)
     {
@@ -115,7 +115,7 @@ LittleFsFile_read(
     if ((sz = lfs_file_read(fs, fh, buffer, len)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_read() failed with %d", sz);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
     if (sz != len)
     {
@@ -143,7 +143,7 @@ LittleFsFile_write(
     if ((off = lfs_file_seek(fs, fh, offset, LFS_SEEK_SET)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_seek() failed with %d", off);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
     if (off != offset)
     {
@@ -157,7 +157,7 @@ LittleFsFile_write(
     if ((sz = lfs_file_write(fs, fh, buffer, len)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_write() failed with %d", sz);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
     if (sz != len)
     {
@@ -180,7 +180,7 @@ LittleFsFile_delete(
     if ((rc = lfs_remove(fs, name)) < 0)
     {
         Debug_LOG_ERROR("lfs_remove() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -199,13 +199,13 @@ LittleFsFile_getSize(
     if ((rc = lfs_file_open(fs, &fh, name, LFS_O_RDONLY)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_open() failed with %d", rc);
-        return OS_ERROR_GENERIC;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
     *sz = lfs_file_size(fs, &fh);
     if ((rc = lfs_file_close(fs, &fh)) < 0)
     {
         Debug_LOG_ERROR("lfs_file_close() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
