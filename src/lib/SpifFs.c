@@ -44,24 +44,28 @@ storage_read(
 
     if (size > OS_Dataport_getSize(self->cfg.storage.dataport))
     {
-        return OS_ERROR_BUFFER_TOO_SMALL;
+        self->ioError = OS_ERROR_BUFFER_TOO_SMALL;
+        return self->ioError;
     }
 
     if ((err = self->cfg.storage.read(addr, size, &read)) != OS_SUCCESS)
     {
         Debug_LOG_ERROR("read() failed with %d", err);
-        return err;
+        self->ioError = err;
+        return self->ioError;
     }
 
     if (read != size)
     {
         Debug_LOG_ERROR("read() requested to read %u bytes but got %zu bytes",
                         size, read);
-        return OS_ERROR_ABORTED;
+        self->ioError = OS_ERROR_ABORTED;
+        return self->ioError;
     }
 
     memcpy(dst, OS_Dataport_getBuf(self->cfg.storage.dataport), read);
 
+    self->ioError = OS_SUCCESS;
     return OS_SUCCESS;
 }
 
@@ -78,7 +82,8 @@ storage_write(
 
     if (size > OS_Dataport_getSize(self->cfg.storage.dataport))
     {
-        return OS_ERROR_BUFFER_TOO_SMALL;
+        self->ioError = OS_ERROR_BUFFER_TOO_SMALL;
+        return self->ioError;
     }
 
     memcpy(OS_Dataport_getBuf(self->cfg.storage.dataport), src, size);
@@ -86,16 +91,19 @@ storage_write(
     if ((err = self->cfg.storage.write(addr, size, &written)) != OS_SUCCESS)
     {
         Debug_LOG_ERROR("write() failed with %d", err);
-        return err;
+        self->ioError = err;
+        return self->ioError;
     }
 
     if (written != size)
     {
         Debug_LOG_ERROR("write() requested to write %u bytes but got %zu bytes",
                         size, written);
-        return OS_ERROR_ABORTED;
+        self->ioError = OS_ERROR_ABORTED;
+        return self->ioError;
     }
 
+    self->ioError = OS_SUCCESS;
     return OS_SUCCESS;
 }
 
@@ -112,7 +120,8 @@ storage_erase(
     if ((err = self->cfg.storage.erase(addr, size, &erased)) != OS_SUCCESS)
     {
         Debug_LOG_ERROR("erase() failed with %d", err);
-        return err;
+        self->ioError = err;
+        return self->ioError;
     }
 
     if (erased != size)
@@ -121,10 +130,11 @@ storage_erase(
             "erase() requested to erase %u bytes but erased %" PRIiMAX " bytes",
             size,
             erased);
-
-        return OS_ERROR_ABORTED;
+        self->ioError = OS_ERROR_ABORTED;
+        return self->ioError;
     }
 
+    self->ioError = OS_SUCCESS;
     return OS_SUCCESS;
 }
 

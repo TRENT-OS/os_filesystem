@@ -65,6 +65,7 @@ struct OS_FileSystem
     const OS_FileSystem_FsOps_t* fsOps;
     const OS_FileSystem_FileOps_t* fileOps;
     OS_FileSystem_Config_t cfg;
+    OS_Error_t ioError;
     union
     {
         struct

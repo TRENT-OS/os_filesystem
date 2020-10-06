@@ -64,6 +64,7 @@ storage_read(
     size = sectorSize * count;
     if (size > OS_Dataport_getSize(self->cfg.storage.dataport))
     {
+        self->ioError = OS_ERROR_BUFFER_TOO_SMALL;
         return RES_PARERR;
     }
 
@@ -71,6 +72,7 @@ storage_read(
     if ((err = self->cfg.storage.read(addr, size, &read)) != OS_SUCCESS)
     {
         Debug_LOG_ERROR("read() failed with %d", err);
+        self->ioError = err;
         return RES_ERROR;
     }
 
@@ -78,11 +80,13 @@ storage_read(
     {
         Debug_LOG_ERROR("read() requested to read %zu bytes but got %zu bytes",
                         size, read);
+        self->ioError = OS_ERROR_ABORTED;
         return RES_ERROR;
     }
 
     memcpy(buff, OS_Dataport_getBuf(self->cfg.storage.dataport), read);
 
+    self->ioError = OS_SUCCESS;
     return RES_OK;
 }
 
@@ -103,6 +107,7 @@ storage_write(
     size = sectorSize * count;
     if (size > OS_Dataport_getSize(self->cfg.storage.dataport))
     {
+        self->ioError = OS_ERROR_BUFFER_TOO_SMALL;
         return RES_PARERR;
     }
 
@@ -112,6 +117,7 @@ storage_write(
     if ((err = self->cfg.storage.write(addr, size, &written)) != OS_SUCCESS)
     {
         Debug_LOG_ERROR("write() failed with %d", err);
+        self->ioError = err;
         return RES_ERROR;
     }
 
@@ -119,9 +125,11 @@ storage_write(
     {
         Debug_LOG_ERROR("write() requested to write %zu bytes but got %zu bytes",
                         size, written);
+        self->ioError = OS_ERROR_ABORTED;
         return RES_ERROR;
     }
 
+    self->ioError = OS_SUCCESS;
     return RES_OK;
 }
 
@@ -135,6 +143,8 @@ storage_ioctl(
     OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) ctx;
     size_t sectorSize = self->cfg.format->fatFs.sectorSize;
     size_t blockSize = self->cfg.format->fatFs.blockSize;
+
+    self->ioError = OS_SUCCESS;
 
     switch (cmd)
     {
@@ -152,6 +162,7 @@ storage_ioctl(
         return RES_OK;
     }
 
+    self->ioError = OS_ERROR_GENERIC;
     return RES_ERROR;
 }
 
