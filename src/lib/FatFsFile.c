@@ -57,7 +57,7 @@ FatFsFile_open(
     if ((rc = f_open(fctx, fh, name, oflags)) != FR_OK)
     {
         Debug_LOG_ERROR("f_open() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -75,7 +75,7 @@ FatFsFile_close(
     if ((rc = f_close(fctx, fh)) != FR_OK)
     {
         Debug_LOG_ERROR("f_close() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -102,7 +102,7 @@ FatFsFile_read(
     if ((rc = f_read(fctx, fh, buffer, len, &read)) != FR_OK)
     {
         Debug_LOG_ERROR("f_read() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -129,7 +129,7 @@ FatFsFile_write(
     if ((rc = f_write(fctx, fh, buffer, len, &written)) != FR_OK)
     {
         Debug_LOG_ERROR("f_write() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -146,7 +146,7 @@ FatFsFile_delete(
     if ((rc = f_unlink(fctx, name)) != FR_OK)
     {
         Debug_LOG_ERROR("f_unlink() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -165,7 +165,7 @@ FatFsFile_getSize(
     if ((rc = f_stat(fctx, name, &fno)) != FR_OK)
     {
         Debug_LOG_ERROR("f_stat() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return OS_ERROR_GENERIC;
     }
 
     *sz = fno.fsize;

@@ -232,7 +232,7 @@ SpifFs_format(
     if ((rc = SPIFFS_format(fs)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_format() failed with %d", rc);
-        return OS_ERROR_ABORTED;
+        return OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -253,7 +253,7 @@ SpifFs_mount(
                            self->fs.spifFs.cacheSize, NULL)) < 0)
     {
         Debug_LOG_ERROR("SPIFFS_mount() failed with %d", rc);
-        return (rc == SPIFFS_ERR_NOT_A_FS) ? OS_ERROR_NOT_FOUND : OS_ERROR_ABORTED;
+        return (rc == SPIFFS_ERR_NOT_A_FS) ? OS_ERROR_NOT_FOUND : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
