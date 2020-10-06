@@ -107,6 +107,7 @@ SpifFsFile_read(
         Debug_LOG_ERROR(
             "SPIFFS_lseek() jumped to offset %zu instead of offset %" PRIiMAX,
             off, offset);
+        return OS_ERROR_ABORTED;
     }
     if ((sz = SPIFFS_read(fs, *file, buffer, len)) < 0)
     {
@@ -117,6 +118,7 @@ SpifFsFile_read(
     {
         Debug_LOG_ERROR("SPIFFS_read() read %zu bytes instead of %zu bytes",
                         sz, len);
+        return OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
@@ -146,6 +148,7 @@ SpifFsFile_write(
         Debug_LOG_ERROR(
             "SPIFFS_lseek() jumped to offset %zu instead of offset %" PRIiMAX,
             off, offset);
+        return OS_ERROR_ABORTED;
     }
 
     if ((sz = SPIFFS_write(fs, *file, (void*) buffer, len)) < 0)
@@ -157,6 +160,7 @@ SpifFsFile_write(
     {
         Debug_LOG_ERROR("SPIFFS_write() wrote %zu bytes instead of %zu bytes",
                         sz, len);
+        return OS_ERROR_ABORTED;
     }
 
     return OS_SUCCESS;
