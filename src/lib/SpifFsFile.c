@@ -8,7 +8,7 @@
 #if defined(OS_FILESYSTEM_REMOVE_DEBUG_LOGGING)
 #undef Debug_Config_PRINT_TO_LOG_SERVER
 #endif
-#include "LibDebug/Debug.h"
+#include "lib_debug/Debug.h"
 
 #include <inttypes.h>
 
