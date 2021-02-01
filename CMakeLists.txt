@@ -20,14 +20,10 @@ target_sources(${PROJECT_NAME}
     INTERFACE
         src/OS_FileSystem.c
         src/OS_FileSystemFile.c
-        src/lib/LittleFs.c
-        src/lib/LittleFsFile.c
         src/lib/SpifFs.c
         src/lib/SpifFsFile.c
         src/lib/FatFs.c
         src/lib/FatFsFile.c
-        3rdParty/littlefs/src/lfs.c
-        3rdParty/littlefs/src/lfs_util.c
         3rdParty/fatfs/src/ff.c
         3rdParty/fatfs/src/ffsystem.c
         3rdParty/fatfs/src/ffunicode.c
@@ -41,7 +37,6 @@ target_sources(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
     INTERFACE
         include
-        3rdParty/littlefs/include
         3rdParty/fatfs/include
         3rdParty/spiffs/include
 )
