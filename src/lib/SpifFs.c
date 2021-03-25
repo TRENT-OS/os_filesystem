@@ -189,13 +189,14 @@ SpifFs_init(
     self->fs.spifFs.cacheSize = (cfg->format->spifFs.cachePages * (sizeof(
                                      spiffs_cache_page) + pageSz)) + sizeof(spiffs_cache);
 
-    if ((self->fs.spifFs.cacheBuf = malloc(self->fs.spifFs.cacheSize)) == NULL)
+    self->fs.spifFs.cacheBuf = malloc(self->fs.spifFs.cacheSize);
+    if (self->fs.spifFs.cacheBuf == NULL)
     {
-        // TODO: check cppcheck error: Memory leak: cacheBuf
-        // cppcheck-suppress memleak
         return OS_ERROR_INSUFFICIENT_SPACE;
     }
-    if ((self->fs.spifFs.workBuf = malloc(pageSz * 2)) == NULL)
+
+    self->fs.spifFs.workBuf = malloc(pageSz * 2);
+    if (self->fs.spifFs.workBuf == NULL)
     {
         err = OS_ERROR_INSUFFICIENT_SPACE;
         goto err0;
@@ -203,8 +204,6 @@ SpifFs_init(
 
     self->fs.spifFs.fs.user_data = (void*) self;
 
-    // TODO: check cppcheck errors: Memory leak: cacheBuf, Memory leak: workBuf
-    // cppcheck-suppress memleak
     return OS_SUCCESS;
 
 err0:
