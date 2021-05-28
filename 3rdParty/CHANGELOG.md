@@ -12,3 +12,10 @@ previous release or the baseline of the 3rd party module.
 
 - Fix `strncpy` truncating NUL terminating char.
 - Fix uninitialized variables in the SPIFFS_vis() function.
+
+## [1.0]
+
+### Added
+
+- Start integration of spiffs based on commit f7d3e9 of 
+  <https://github.com/pellepl/spiffs>.
