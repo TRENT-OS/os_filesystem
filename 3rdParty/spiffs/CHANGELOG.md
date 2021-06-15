@@ -17,5 +17,5 @@ previous release or the baseline of the 3rd party module.
 
 ### Added
 
-- Start integration of spiffs based on commit f7d3e9 of 
+- Start integration of spiffs based on commit f7d3e9 of
   <https://github.com/pellepl/spiffs>.
