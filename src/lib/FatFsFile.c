@@ -75,7 +75,7 @@ FatFsFile_close(
     if ((rc = f_close(fctx, fh)) != FR_OK)
     {
         Debug_LOG_ERROR("f_close() failed with %d on file handle %d",
-            rc, hFile);
+                        rc, hFile);
         return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
@@ -98,13 +98,13 @@ FatFsFile_read(
     if ((rc = f_lseek(fctx, fh, offset)) != FR_OK)
     {
         Debug_LOG_ERROR("f_lseek() failed with %d on file handle %d",
-            rc, hFile);
+                        rc, hFile);
         return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
     if ((rc = f_read(fctx, fh, buffer, len, &read)) != FR_OK)
     {
         Debug_LOG_ERROR("f_read() failed with %d on file handle %d",
-            rc, hFile);
+                        rc, hFile);
         return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
@@ -127,13 +127,13 @@ FatFsFile_write(
     if ((rc = f_lseek(fctx, fh, offset)) != FR_OK)
     {
         Debug_LOG_ERROR("f_lseek() failed with %d on file handle %d",
-            rc, hFile);
+                        rc, hFile);
         return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_ABORTED;
     }
     if ((rc = f_write(fctx, fh, buffer, len, &written)) != FR_OK)
     {
         Debug_LOG_ERROR("f_write() failed with %d on file handle %d",
-            rc, hFile);
+                        rc, hFile);
         return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
@@ -151,7 +151,7 @@ FatFsFile_delete(
     if ((rc = f_unlink(fctx, name)) != FR_OK)
     {
         Debug_LOG_ERROR("f_unlink() failed with %d on file name %s",
-            rc, name);
+                        rc, name);
         return (self->ioError != OS_SUCCESS) ? self->ioError : OS_ERROR_GENERIC;
     }
 
