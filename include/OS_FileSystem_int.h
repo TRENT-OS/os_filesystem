@@ -54,10 +54,13 @@ typedef struct
 } OS_FileSystem_FileOps_t;
 
 /*
- * We use a bit-mask to keep track of open file handles, so we cannot exceed the
- * size of this mask
+ * Maximum number of file handles.
+ * Each open file handle is represented by a bit in the usage mask bit-field.
+ * Hence, the number of file handles is restricted by the bit-width of the data
+ * type used for the bit-field. Since the used data type is uint64_t up to 64
+ * file handles are possible.
  */
-#define MAX_FILE_HANDLES    sizeof(uint64_t)
+#define MAX_FILE_HANDLES    ((size_t)64)
 
 // Hidden definition of struct
 struct OS_FileSystem
