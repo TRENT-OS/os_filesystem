@@ -28,6 +28,8 @@ fileHandle_findFree(
     {
         if ((m & 1ULL) == 0)
         {
+            // The file handles are array indizes and so we can simply return
+            // the loop-index of the first unused file handle.
             return i;
         }
         m >>= 1;
