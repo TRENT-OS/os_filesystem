@@ -33,7 +33,7 @@ fileHandle_findFree(
         m >>= 1;
     }
 
-    return -1;
+    return MAX_FILE_HANDLES;
 }
 
 static void
@@ -91,7 +91,7 @@ OS_FileSystemFile_open(
         return OS_ERROR_INVALID_PARAMETER;
     }
 
-    if ((*hFile = fileHandle_findFree(self)) < 0)
+    if ((*hFile = fileHandle_findFree(self)) >= MAX_FILE_HANDLES)
     {
         Debug_LOG_ERROR("All file handles are in use");
         return OS_ERROR_OUT_OF_BOUNDS;
