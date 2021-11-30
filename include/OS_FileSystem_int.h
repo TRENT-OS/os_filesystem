@@ -54,13 +54,17 @@ typedef struct
 } OS_FileSystem_FileOps_t;
 
 /*
- * Maximum number of file handles.
- * Each open file handle is represented by a bit in the usage mask bit-field.
- * Hence, the number of file handles is restricted by the bit-width of the data
- * type used for the bit-field. Since the used data type is uint64_t up to 64
- * file handles are possible.
+ * Type of the usage bit-field.
+ * Each open file handle is represented by a bit in the usage bit-field.
  */
-#define MAX_FILE_HANDLES    ((size_t)64)
+typedef uint64_t UsageBitField_t;
+
+/*
+ * Maximum number of file handles.
+ * The possible number of file handles is limited by the bit-width of the data
+ * type used for the usage bit-field.
+ */
+#define MAX_FILE_HANDLES    (sizeof(UsageBitField_t) * 8)
 
 // Hidden definition of struct
 struct OS_FileSystem
@@ -96,5 +100,5 @@ struct OS_FileSystem
             size_t cacheSize;
         } spifFs;
     } fs;
-    uint64_t usageMask;
+    UsageBitField_t usageBitField;
 };

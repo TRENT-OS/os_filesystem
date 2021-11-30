@@ -20,19 +20,17 @@ static OS_FileSystemFile_Handle_t
 fileHandle_findFree(
     OS_FileSystem_Handle_t self)
 {
-    size_t i;
-    uint64_t m;
+    UsageBitField_t u = self->usageBitField;
 
-    m = self->usageMask;
-    for (i = 0; i < MAX_FILE_HANDLES; i++)
+    for (size_t i = 0; i < MAX_FILE_HANDLES; i++)
     {
-        if ((m & 1ULL) == 0)
+        if ((u & 1ULL) == 0)
         {
             // The file handles are array indizes and so we can simply return
             // the loop-index of the first unused file handle.
             return i;
         }
-        m >>= 1;
+        u >>= 1;
     }
 
     return MAX_FILE_HANDLES;
@@ -43,7 +41,7 @@ fileHandle_take(
     OS_FileSystem_Handle_t           self,
     const OS_FileSystemFile_Handle_t hFile)
 {
-    self->usageMask |= (1ULL << hFile);
+    self->usageBitField |= (1ULL << hFile);
 }
 
 static void
@@ -51,7 +49,7 @@ fileHandle_release(
     OS_FileSystem_Handle_t           self,
     const OS_FileSystemFile_Handle_t hFile)
 {
-    self->usageMask &= ~(1ULL << hFile);
+    self->usageBitField &= ~(1ULL << hFile);
 }
 
 static bool
@@ -59,7 +57,7 @@ fileHandle_inUse(
     OS_FileSystem_Handle_t           self,
     const OS_FileSystemFile_Handle_t hFile)
 {
-    return (self->usageMask & (1ULL << hFile));
+    return (self->usageBitField & (1ULL << hFile));
 }
 
 static bool
