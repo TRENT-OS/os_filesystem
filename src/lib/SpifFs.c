@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2020-2024, HENSOLDT Cyber GmbH
- * 
+ *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * For commercial licensing, contact: info.cyber@hensoldt.net
@@ -24,25 +24,24 @@
 // the user to set manually. It can be done via the StorageServer.
 #define SPIFFS_DEFAULT_PHYS_ADDR 0
 static const OS_FileSystem_Format_t SpifFs_defaultConfig =
-{
-    .spifFs = {
-        .eraseBlockSize   = 4096,
-        .logicalBlockSize = 4096,
-        .logicalPageSize  = 256,
-        .cachePages       = 16,
-    }
-};
+    {
+        .spifFs = {
+            .eraseBlockSize = 4096,
+            .logicalBlockSize = 4096,
+            .logicalPageSize = 256,
+            .cachePages = 16,
+        }};
 
 // Private Functions -----------------------------------------------------------
 
 static int32_t
 storage_read(
-    struct spiffs_t* fs,
-    uint32_t         addr,
-    uint32_t         size,
-    uint8_t*         dst)
+    struct spiffs_t *fs,
+    uint32_t addr,
+    uint32_t size,
+    uint8_t *dst)
 {
-    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) fs->user_data;
+    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t)fs->user_data;
     OS_Error_t err;
     size_t read;
 
@@ -75,12 +74,12 @@ storage_read(
 
 static int32_t
 storage_write(
-    struct spiffs_t* fs,
-    uint32_t         addr,
-    uint32_t         size,
-    uint8_t*         src)
+    struct spiffs_t *fs,
+    uint32_t addr,
+    uint32_t size,
+    uint8_t *src)
 {
-    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) fs->user_data;
+    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t)fs->user_data;
     OS_Error_t err;
     size_t written;
 
@@ -113,11 +112,11 @@ storage_write(
 
 static int32_t
 storage_erase(
-    struct spiffs_t* fs,
-    uint32_t         addr,
-    uint32_t         size)
+    struct spiffs_t *fs,
+    uint32_t addr,
+    uint32_t size)
 {
-    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t) fs->user_data;
+    OS_FileSystem_Handle_t self = (OS_FileSystem_Handle_t)fs->user_data;
     OS_Error_t err;
     off_t erased;
 
@@ -149,29 +148,30 @@ SpifFs_init(
     OS_FileSystem_Handle_t self)
 {
     OS_Error_t err;
-    OS_FileSystem_Config_t* cfg = &self->cfg;
+    OS_FileSystem_Config_t *cfg = &self->cfg;
     size_t pageSz, blockSz;
 
-    if  (NULL == cfg->format)
+    if (NULL == cfg->format)
     {
         cfg->format = &SpifFs_defaultConfig;
     }
 
     // We need to ensure that page size is smaller than block size
-    pageSz  = cfg->format->spifFs.logicalPageSize;
+    pageSz = cfg->format->spifFs.logicalPageSize;
     blockSz = cfg->format->spifFs.logicalBlockSize;
     if (pageSz >= blockSz)
     {
         Debug_LOG_ERROR("Block size (%zu bytes) is smaller than page size "
-                        "(%zu bytes)", blockSz, pageSz);
+                        "(%zu bytes)",
+                        blockSz, pageSz);
         return OS_ERROR_INVALID_PARAMETER;
     }
 
-    self->fs.spifFs.cfg.phys_addr        = SPIFFS_DEFAULT_PHYS_ADDR;
-    self->fs.spifFs.cfg.phys_size        = cfg->size;
+    self->fs.spifFs.cfg.phys_addr = SPIFFS_DEFAULT_PHYS_ADDR;
+    self->fs.spifFs.cfg.phys_size = cfg->size;
     self->fs.spifFs.cfg.phys_erase_block = cfg->format->spifFs.eraseBlockSize;
-    self->fs.spifFs.cfg.log_block_size   = blockSz;
-    self->fs.spifFs.cfg.log_page_size    = pageSz;
+    self->fs.spifFs.cfg.log_block_size = blockSz;
+    self->fs.spifFs.cfg.log_page_size = pageSz;
 
     Debug_LOG_INFO("Using SPIFFS ("
                    "phys_addr = %u, "
@@ -185,13 +185,15 @@ SpifFs_init(
                    self->fs.spifFs.cfg.log_block_size,
                    self->fs.spifFs.cfg.log_page_size);
 
-    self->fs.spifFs.cfg.hal_read_f  = storage_read;
+    self->fs.spifFs.cfg.hal_read_f = storage_read;
     self->fs.spifFs.cfg.hal_write_f = storage_write;
     self->fs.spifFs.cfg.hal_erase_f = storage_erase;
 
     // These size calculations are taken from SPIFFS test code
     self->fs.spifFs.cacheSize = (cfg->format->spifFs.cachePages * (sizeof(
-                                     spiffs_cache_page) + pageSz)) + sizeof(spiffs_cache);
+                                                                       spiffs_cache_page) +
+                                                                   pageSz)) +
+                                sizeof(spiffs_cache);
 
     self->fs.spifFs.cacheBuf = malloc(self->fs.spifFs.cacheSize);
     if (self->fs.spifFs.cacheBuf == NULL)
@@ -206,7 +208,7 @@ SpifFs_init(
         goto err0;
     }
 
-    self->fs.spifFs.fs.user_data = (void*) self;
+    self->fs.spifFs.fs.user_data = (void *)self;
 
     return OS_SUCCESS;
 
@@ -229,8 +231,8 @@ OS_Error_t
 SpifFs_format(
     OS_FileSystem_Handle_t self)
 {
-    spiffs* fs = &self->fs.spifFs.fs;
-    spiffs_config* cfg = &self->fs.spifFs.cfg;
+    spiffs *fs = &self->fs.spifFs.fs;
+    spiffs_config *cfg = &self->fs.spifFs.cfg;
     int rc;
 
     // SPIFFS_format needs to be called with an initalized spiffs structure,
@@ -259,8 +261,8 @@ OS_Error_t
 SpifFs_mount(
     OS_FileSystem_Handle_t self)
 {
-    spiffs* fs = &self->fs.spifFs.fs;
-    spiffs_config* cfg = &self->fs.spifFs.cfg;
+    spiffs *fs = &self->fs.spifFs.fs;
+    spiffs_config *cfg = &self->fs.spifFs.cfg;
     int rc;
 
     if ((rc = SPIFFS_mount(fs, cfg, self->fs.spifFs.workBuf,
@@ -274,8 +276,10 @@ SpifFs_mount(
         // complained about it not being a FS and then return NOT_FOUND;
         // otherwise return GENERIC.
         return (self->ioError != OS_SUCCESS)
-               ? self->ioError : (rc == SPIFFS_ERR_NOT_A_FS)
-               ? OS_ERROR_NOT_FOUND : OS_ERROR_GENERIC;
+                   ? self->ioError
+               : (rc == SPIFFS_ERR_NOT_A_FS)
+                   ? OS_ERROR_NOT_FOUND
+                   : OS_ERROR_GENERIC;
     }
 
     return OS_SUCCESS;
@@ -285,7 +289,7 @@ OS_Error_t
 SpifFs_unmount(
     OS_FileSystem_Handle_t self)
 {
-    spiffs* fs = &self->fs.spifFs.fs;
+    spiffs *fs = &self->fs.spifFs.fs;
 
     // SPIFFS_unmount does not return an error code.
     SPIFFS_unmount(fs);

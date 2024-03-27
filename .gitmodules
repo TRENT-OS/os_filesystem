@@ -1,0 +1,6 @@
+[submodule "3rdParty/spiffs"]
+	path = 3rdParty/spiffs
+	url = ../spiffs.git
+[submodule "3rdParty/littlefs"]
+	path = 3rdParty/littlefs
+	url = ../littlefs.git

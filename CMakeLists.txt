@@ -30,8 +30,8 @@ target_sources(${PROJECT_NAME}
         src/lib/SpifFsFile.c
         src/lib/FatFs.c
         src/lib/FatFsFile.c
-        3rdParty/littlefs/src/lfs.c
-        3rdParty/littlefs/src/lfs_util.c
+        3rdParty/littlefs/lfs.c
+        3rdParty/littlefs/lfs_util.c
         3rdParty/fatfs/src/ff.c
         3rdParty/fatfs/src/ffsystem.c
         3rdParty/fatfs/src/ffunicode.c
@@ -45,9 +45,9 @@ target_sources(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
     INTERFACE
         include
-        3rdParty/littlefs/include
+        3rdParty/littlefs
         3rdParty/fatfs/include
-        3rdParty/spiffs/include
+        3rdParty/spiffs/src
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -60,4 +60,5 @@ target_compile_options(${PROJECT_NAME}
     INTERFACE
        -Wall
        -Werror
+       -Wno-unused-function
 )
